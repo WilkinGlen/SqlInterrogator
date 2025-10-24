@@ -1,7 +1,6 @@
-﻿using System.Text.RegularExpressions;
-using System.Runtime.CompilerServices;
+﻿namespace SqlInterrogatorService;
 
-namespace SqlInterrogatorService;
+using System.Text.RegularExpressions;
 
 public static partial class SqlInterrogator
 {
@@ -9,6 +8,8 @@ public static partial class SqlInterrogator
     private static partial Regex MultilineRegex();
     [GeneratedRegex(@"/\*.*?\*/", RegexOptions.Singleline)]
     private static partial Regex SingleLineRegex();
+    [GeneratedRegex(@"^\s*SELECT\s+", RegexOptions.IgnoreCase, "en-UG")]
+    private static partial Regex IgnoreCaseRegex();
 
     public static List<string> ExtractDatabaseNamesFromSql(string sql)
     {
@@ -62,6 +63,81 @@ public static partial class SqlInterrogator
         return [.. databaseNames];
     }
 
+    public static string? ExtractFirstTableNameFromSelectClauseInSql(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            return null;
+        }
+
+        sql = RemoveComments(sql);
+        sql = RemoveCTEs(sql);
+
+        if (!IgnoreCaseRegex().IsMatch(sql))
+        {
+            return null;
+        }
+
+        var patterns = new[]
+        {
+            // Pattern 1: Four-part names - extract table (4th part) - MUST come before three-part patterns
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]",
+            @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\.(\w+)(?!\.\w)",
+
+            // Pattern 2: Bracketed three-part identifier [db].[schema].[table]
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
+
+            // Pattern 3: Mixed bracketed/unbracketed three-part db.schema.table or [db].schema.table
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.([^\]\.\s\[]+)\.([^\]\.\s\(\[]+)(?!\.\w)(?!\.\[)",
+            @"(?:FROM|JOIN)\s+(\w+)\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
+
+            // Pattern 4: Unbracketed three-part identifier db.schema.table
+            @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)(?!\.\w)",
+
+            // Pattern 5: Bracketed two-part identifier [schema].[table]
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
+
+            // Pattern 6: Mixed two-part identifier [schema].table
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.(\w+)(?!\.)(?!\s*\()",
+
+            // Pattern 7: Unbracketed two-part identifier schema.table
+            @"(?:FROM|JOIN)\s+(\w+)\.(\w+)(?!\.\w)",
+
+            // Pattern 8: Double-quoted identifiers
+            @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
+            @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
+            @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""(?!\.)(?!\."")",
+            @"(?:FROM|JOIN)\s+""([^""]+)""(?!\."")",
+
+            // Pattern 9: Single bracketed table name [table]
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\](?!\.\[)(?!\.)",
+
+            // Pattern 10: Single unbracketed table name
+            @"(?:FROM|JOIN)\s+(\w+)(?!\.\w)(?!\s*\()",
+
+            // Pattern 11: Handle table hints WITH (NOLOCK) etc
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)",
+            @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)",
+        };
+
+        foreach (var pattern in patterns)
+        {
+            var match = Regex.Match(sql, pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            if (match.Success)
+            {
+                for (var i = match.Groups.Count - 1; i >= 1; i--)
+                {
+                    if (match.Groups[i].Success && !string.IsNullOrWhiteSpace(match.Groups[i].Value))
+                    {
+                        return match.Groups[i].Value;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     private static string ExtractDatabaseNameFromMatch(Match match)
     {
         return match.Groups[1].Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value)
@@ -76,5 +152,11 @@ public static partial class SqlInterrogator
         sql = MultilineRegex().Replace(sql, " ");
         sql = SingleLineRegex().Replace(sql, " ");
         return sql;
+    }
+
+    private static string RemoveCTEs(string sql)
+    {
+        var ctePattern = @"^\s*WITH\s+.*?\)\s*(?=SELECT)";
+        return Regex.Replace(sql, ctePattern, "", RegexOptions.IgnoreCase | RegexOptions.Singleline);
     }
 }
