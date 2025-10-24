@@ -10,6 +10,12 @@ public static partial class SqlInterrogator
     private static partial Regex SingleLineRegex();
     [GeneratedRegex(@"^\s*SELECT\s+", RegexOptions.IgnoreCase, "en-UG")]
     private static partial Regex IgnoreCaseRegex();
+    [GeneratedRegex(@"USE\s+\[?[\w\s]+\]?\s*;?\s*\r?\n\s*GO\s*", RegexOptions.IgnoreCase | RegexOptions.Multiline)]
+    private static partial Regex UseWithGoRegex();
+    [GeneratedRegex(@"USE\s+\[?[\w\s]+\]?\s*;?\s*", RegexOptions.IgnoreCase)]
+    private static partial Regex UseStatementRegex();
+    [GeneratedRegex(@"^\s*GO\s*$", RegexOptions.IgnoreCase | RegexOptions.Multiline)]
+    private static partial Regex StandaloneGoRegex();
 
     public static List<string> ExtractDatabaseNamesFromSql(string sql)
     {
@@ -72,6 +78,7 @@ public static partial class SqlInterrogator
 
         sql = RemoveComments(sql);
         sql = RemoveCTEs(sql);
+        sql = RemoveUseStatements(sql);
 
         if (!IgnoreCaseRegex().IsMatch(sql))
         {
@@ -158,5 +165,14 @@ public static partial class SqlInterrogator
     {
         var ctePattern = @"^\s*WITH\s+.*?\)\s*(?=SELECT)";
         return Regex.Replace(sql, ctePattern, "", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    }
+
+    private static string RemoveUseStatements(string sql)
+    {
+        sql = UseWithGoRegex().Replace(sql, "");
+        sql = UseStatementRegex().Replace(sql, "");
+        sql = StandaloneGoRegex().Replace(sql, "");
+
+        return sql.Trim();
     }
 }

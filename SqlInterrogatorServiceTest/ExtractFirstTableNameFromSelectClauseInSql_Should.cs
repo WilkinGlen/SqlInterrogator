@@ -574,4 +574,50 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     }
 
     #endregion
+
+    #region USE Clause Tests
+
+    [Fact]
+    public void ReturnTableName_WhenQueryHasUseClause()
+    {
+        var sql = @"USE MyDatabase;
+            SELECT * FROM Users";
+        var result = SqlInterrogatorService.SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Users");
+    }
+
+    [Fact]
+    public void ReturnTableName_WhenQueryHasUseBracketedClause()
+    {
+        var sql = @"USE [MyDatabase];
+ SELECT * FROM [dbo].[Users]";
+        var result = SqlInterrogatorService.SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Users");
+    }
+
+    [Fact]
+    public void ReturnTableName_WhenQueryHasUseClauseWithGo()
+    {
+        var sql = @"USE MyDatabase
+ GO
+         SELECT * FROM Users";
+        var result = SqlInterrogatorService.SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Users");
+    }
+
+    [Fact]
+    public void ReturnTableName_WhenQueryHasMultipleStatementsWithUse()
+    {
+        var sql = @"USE MyDatabase;
+    SELECT * FROM Users WHERE Id = 1;
+        SELECT * FROM Orders WHERE Id = 2;";
+        var result = SqlInterrogatorService.SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Users");
+    }
+
+    #endregion
 }
