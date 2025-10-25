@@ -21,8 +21,6 @@ using System.Text.RegularExpressions;
 /// </remarks>
 public static partial class SqlInterrogator
 {
-    #region Constants
-
     // Regex group indices for clarity and maintainability
     private const int DatabaseGroupIndex = 1;
     private const int SecondaryDatabaseGroupIndex = 2;
@@ -35,10 +33,6 @@ public static partial class SqlInterrogator
 
     // Regex timeout in milliseconds to prevent ReDoS attacks and infinite loops
     private const int RegexTimeoutMilliseconds = 1000;
-
-    #endregion
-
-    #region Generated Regex Patterns
 
     // These regex patterns are generated at compile-time using the [GeneratedRegex] attribute
     // for optimal performance. The source generator creates the implementation automatically.
@@ -90,11 +84,11 @@ public static partial class SqlInterrogator
 
     /// <summary>Matches simple qualified column aliases (table.column alias).</summary>
     [GeneratedRegex(@"^(\w+\.\w+)\s+(\w+)$", RegexOptions.None, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
-private static partial Regex SimpleQualifiedAliasRegex();
+    private static partial Regex SimpleQualifiedAliasRegex();
 
     /// <summary>Matches numeric or string literals.</summary>
     [GeneratedRegex(@"^\d+$|^'[^']*'$", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
-  private static partial Regex LiteralRegex();
+    private static partial Regex LiteralRegex();
 
     /// <summary>Matches SQL function calls including window functions and common SQL functions.</summary>
     [GeneratedRegex(@"(ROW_NUMBER|RANK|DENSE_RANK|NTILE|LEAD|LAG|FIRST_VALUE|LAST_VALUE|PERCENT_RANK|CUME_DIST|COUNT|SUM|AVG|MIN|MAX|CAST|CONVERT|COALESCE|ISNULL|CONCAT|SUBSTRING|UPPER|LOWER|LTRIM|RTRIM|LEFT|RIGHT|DATEADD|DATEDIFF|DATEPART|GETDATE|\w+)\s*\(", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
@@ -110,15 +104,11 @@ private static partial Regex SimpleQualifiedAliasRegex();
 
     /// <summary>Matches four-part identifier prefix pattern (word. or [word].) before FROM/JOIN keywords.</summary>
     [GeneratedRegex(@"(\w+|\[[^\]]+\])\.\s*$", RegexOptions.None, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
- private static partial Regex FourPartIdentifierPrefixRegex();
+    private static partial Regex FourPartIdentifierPrefixRegex();
 
     /// <summary>Matches whitespace for normalization.</summary>
     [GeneratedRegex(@"\s+", RegexOptions.None, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex WhitespaceNormalizationRegex();
-
-    #endregion
-
-    #region Pattern Constants
 
     // Pattern 1: Bracketed three-part identifier [db].[schema].[table]
     // Example: [MyDB].[dbo].[Users], [DB1].[sys].[tables]
@@ -163,10 +153,6 @@ private static partial Regex SimpleQualifiedAliasRegex();
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)";
     private const string UnbracketedWithHintPattern =
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)";
-
-    #endregion
-
-    #region Public Methods
 
     /// <summary>
     /// Extracts all unique database names referenced in a SQL statement.
@@ -215,12 +201,11 @@ private static partial Regex SimpleQualifiedAliasRegex();
             // Four-part patterns MUST come first to match before three-part patterns
             // Pattern 6: Server.database.schema.table (four-part names) - extract database (2nd part)
             BracketedFourPartPattern,
-            UnbracketedFourPartPattern,
-            
+            UnbracketedFourPartPattern,  
             // Three-part patterns
             // Pattern 1: Bracketed three-part identifier [db].[schema].[table]
             BracketedThreePartPattern,
-            // Pattern 2: Mixed bracketed/unbracketed  
+            // Pattern 2: Mixed bracketed/unbracketed
             MixedThreePartPattern1,
             MixedThreePartPattern2,
             // Pattern 3: Unbracketed three-part identifier db.schema.table
@@ -324,42 +309,32 @@ private static partial Regex SimpleQualifiedAliasRegex();
             // Pattern 1: Four-part names - extract table (4th part) - MUST come before three-part patterns
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]",
             @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\.(\w+)(?!\.\w)",
-
             // Pattern 2: Bracketed three-part identifier [db].[schema].[table]
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
-
             // Pattern 3: Mixed bracketed/unbracketed three-part db.schema.table or [db].schema.table
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.([^\]\.\s\[]+)\.([^\]\.\s\(\[]+)(?!\.\w)(?!\.\[)",
             @"(?:FROM|JOIN)\s+(\w+)\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
-
             // Pattern 4: Unbracketed three-part identifier db.schema.table
             @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)(?!\.\w)",
-
             // Pattern 5: Bracketed two-part identifier [schema].[table]
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
-
             // Pattern 6: Mixed two-part identifier [schema].table
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.(\w+)(?!\.)(?!\s*\()",
-
             // Pattern 7: Unbracketed two-part identifier schema.table
             @"(?:FROM|JOIN)\s+(\w+)\.(\w+)(?!\.\w)",
-
             // Pattern 8: Double-quoted identifiers (MUST come after bracketed patterns)
             @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
             @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
             @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""(?!\."")",
             @"(?:FROM|JOIN)\s+""([^""]+)""(?!\."")",
-
             // Pattern 9: Single bracketed table name [table]
             @"(?:FROM|JOIN)\s+\[([^\]]+)\](?!\.\[)(?!\.)",
-
-      // Pattern 10: Single unbracketed table name
-   @"(?:FROM|JOIN)\s+(\w+)(?!\.\w)(?!\s*\()",
-
-     // Pattern 11: Handle table hints WITH (NOLOCK) etc
-     @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)",
-    @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)",
-   };
+            // Pattern 10: Single unbracketed table name
+            @"(?:FROM|JOIN)\s+(\w+)(?!\.\w)(?!\s*\()",
+            // Pattern 11: Handle table hints WITH (NOLOCK) etc
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)",
+            @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)",
+        };
 
         // Try each pattern in order until a match is found
         foreach (var pattern in patterns)
@@ -503,10 +478,6 @@ private static partial Regex SimpleQualifiedAliasRegex();
 
         return columns;
     }
-
-    #endregion
-
-    #region Private Helper Methods
 
     /// <summary>
     /// Splits a text string by commas whilst respecting parentheses nesting.
@@ -685,28 +656,28 @@ private static partial Regex SimpleQualifiedAliasRegex();
     /// <returns>True if the expression is a complex expression; otherwise, false.</returns>
     private static bool IsComplexExpression(string columnPart)
     {
-      // Normalize whitespace for better pattern matching
-     var normalizedPart = WhitespaceNormalizationRegex().Replace(columnPart.Trim(), " ");
+        // Normalize whitespace for better pattern matching
+        var normalizedPart = WhitespaceNormalizationRegex().Replace(columnPart.Trim(), " ");
         var upperPart = normalizedPart.ToUpperInvariant();
 
-  // Check for CASE expressions (handles multiline)
+        // Check for CASE expressions (handles multiline)
         if (upperPart.StartsWith("CASE") || upperPart.Contains(" CASE ") || upperPart.Contains(" WHEN "))
-  {
+        {
             return true;
-      }
+        }
 
         // Check for arithmetic operators (+-*/) but only if there's NO qualified column
         // If it has a table.column reference (contains dot before the operator), it's OK
         var hasDot = upperPart.Contains('.');
-        var hasArithmetic = 
-            upperPart.Contains(" + ") || 
-    upperPart.Contains(" - ") ||
-   upperPart.Contains(" * ") ||
+        var hasArithmetic =
+            upperPart.Contains(" + ") ||
+            upperPart.Contains(" - ") ||
+            upperPart.Contains(" * ") ||
             upperPart.Contains(" / ");
 
         // Only treat as complex if it has arithmetic BUT no table qualification
         return hasArithmetic && !hasDot;
-  }
+    }
 
     /// <summary>
     /// Determines whether a column part is a function call and extracts the function name.
@@ -764,16 +735,12 @@ private static partial Regex SimpleQualifiedAliasRegex();
         {
             // Five-part: [server].[db].[schema].[table].[column]
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 5),
- 
             // Four-part: [db].[schema].[table].[column] or db.schema.table.column
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 4),
-
             // Three-part: [db].[table].[column] or db.table.column
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 3),
-
             // Two-part: [table].[column] or table.column
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 2),
-
             // Single part: [column] or column
             (@"^\[?([^\]\.]+)\]?$", 1),
         };
@@ -789,30 +756,30 @@ private static partial Regex SimpleQualifiedAliasRegex();
                     // server.db.schema.table.column
                     // Extract: server (1st) as DB, table (4th), column (5th)
                     5 => (match.Groups[DatabaseGroupIndex].Value,
-                          match.Groups[ColumnGroupIndex].Value,
-                          aliasName ?? match.Groups[FifthPartGroupIndex].Value),
+                      match.Groups[ColumnGroupIndex].Value,
+                        aliasName ?? match.Groups[FifthPartGroupIndex].Value),
 
                     // db.schema.table.column
                     // Extract: db (1st), table (3rd - skip schema), column (4th)
                     4 => (match.Groups[DatabaseGroupIndex].Value,
-                          match.Groups[TableGroupIndex].Value,
-                          aliasName ?? match.Groups[ColumnGroupIndex].Value),
+                        match.Groups[TableGroupIndex].Value,
+                                aliasName ?? match.Groups[ColumnGroupIndex].Value),
 
                     // Could be db.table.column or schema.table.column
                     // Assume db.table.column format
                     3 => (match.Groups[DatabaseGroupIndex].Value,
-                          match.Groups[SecondaryDatabaseGroupIndex].Value,
-                          aliasName ?? match.Groups[TableGroupIndex].Value),
+                               match.Groups[SecondaryDatabaseGroupIndex].Value,
+                      aliasName ?? match.Groups[TableGroupIndex].Value),
 
                     // table.column (most common qualified format)
                     2 => (null,
-                  match.Groups[DatabaseGroupIndex].Value,
-                     aliasName ?? match.Groups[SecondaryDatabaseGroupIndex].Value),
+                   match.Groups[DatabaseGroupIndex].Value,
+                    aliasName ?? match.Groups[SecondaryDatabaseGroupIndex].Value),
 
                     // Simple column name (no qualification)
                     1 => (null,
-                          null,
-                          aliasName ?? match.Groups[DatabaseGroupIndex].Value),
+                  null,
+                       aliasName ?? match.Groups[DatabaseGroupIndex].Value),
 
                     _ => null
                 };
@@ -837,12 +804,12 @@ private static partial Regex SimpleQualifiedAliasRegex();
     private static string ExtractDatabaseNameFromMatch(Match match)
     {
         return match.Groups[DatabaseGroupIndex].Success &&
-            !string.IsNullOrWhiteSpace(match.Groups[DatabaseGroupIndex].Value)
-                ? match.Groups[DatabaseGroupIndex].Value
-                : match.Groups[SecondaryDatabaseGroupIndex].Success &&
-                !string.IsNullOrWhiteSpace(match.Groups[SecondaryDatabaseGroupIndex].Value)
-                    ? match.Groups[SecondaryDatabaseGroupIndex].Value
-                    : string.Empty;
+                    !string.IsNullOrWhiteSpace(match.Groups[DatabaseGroupIndex].Value)
+             ? match.Groups[DatabaseGroupIndex].Value
+                     : match.Groups[SecondaryDatabaseGroupIndex].Success &&
+              !string.IsNullOrWhiteSpace(match.Groups[SecondaryDatabaseGroupIndex].Value)
+               ? match.Groups[SecondaryDatabaseGroupIndex].Value
+                     : string.Empty;
     }
 
     /// <summary>
@@ -903,6 +870,4 @@ private static partial Regex SimpleQualifiedAliasRegex();
 
         return sql.Trim();
     }
-
-    #endregion
 }

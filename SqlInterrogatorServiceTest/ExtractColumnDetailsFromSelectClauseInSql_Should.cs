@@ -296,8 +296,6 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result[1].ColumnName.Should().Be("Email");
     }
 
-    #region Window Function Tests
-
     [Fact]
     public void HandleRowNumberFunction()
     {
@@ -345,10 +343,6 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result[1].ColumnName.Should().Be("LowestPaid");
     }
 
-    #endregion
-
-    #region Unicode Tests
-
     [Fact]
     public void HandleJapaneseColumnNames()
     {
@@ -360,6 +354,4 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result[0].ColumnName.Should().Be("Name");
         _ = result[1].ColumnName.Should().Be("???");
     }
-
-    #endregion
 }

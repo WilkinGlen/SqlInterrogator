@@ -190,8 +190,6 @@ public class ExtractDatabaseNamesFromSql_Should
         _ = result.Should().Contain(["Database1", "Database2"]);
     }
 
-    #region MERGE Statement Tests
-
     [Fact]
     public void HandleMergeStatement()
     {
@@ -203,22 +201,22 @@ public class ExtractDatabaseNamesFromSql_Should
 
         _ = result.Should().Contain("TargetDB");
         _ = result.Should().Contain("SourceDB");
-  _ = result.Should().HaveCount(2);
+        _ = result.Should().HaveCount(2);
     }
 
     [Fact]
     public void HandleMergeWithInsertUpdate()
     {
-   var sql = @"MERGE MyDB.dbo.Users AS target
+        var sql = @"MERGE MyDB.dbo.Users AS target
                 USING TempDB.dbo.TempUsers AS source
                 ON target.Id = source.Id
                 WHEN MATCHED THEN UPDATE SET target.Name = source.Name
                 WHEN NOT MATCHED THEN INSERT (Id, Name) VALUES (source.Id, source.Name);";
 
-     var result = SqlInterrogatorService.SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+        var result = SqlInterrogatorService.SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().Contain("MyDB");
-    _ = result.Should().Contain("TempDB");
+        _ = result.Should().Contain("TempDB");
     }
 
     [Fact]
@@ -233,17 +231,13 @@ public class ExtractDatabaseNamesFromSql_Should
 
         _ = result.Should().Contain("Database1");
         _ = result.Should().Contain("Database2");
-    _ = result.Should().HaveCount(2);
+        _ = result.Should().HaveCount(2);
     }
-
-  #endregion
-
-    #region Unicode and International Characters
 
     [Fact]
     public void HandleJapaneseCharacters()
     {
-   var sql = "SELECT * FROM [データベース].[dbo].[ユーザー]";
+        var sql = "SELECT * FROM [データベース].[dbo].[ユーザー]";
 
         var result = SqlInterrogatorService.SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
@@ -253,11 +247,11 @@ public class ExtractDatabaseNamesFromSql_Should
     [Fact]
     public void HandleChineseCharacters()
     {
-     var sql = "SELECT * FROM [数据库].[dbo].[用户表]";
+        var sql = "SELECT * FROM [数据库].[dbo].[用户表]";
 
         var result = SqlInterrogatorService.SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
-    _ = result.Should().Contain("数据库");
+        _ = result.Should().Contain("数据库");
     }
 
     [Fact]
@@ -265,10 +259,8 @@ public class ExtractDatabaseNamesFromSql_Should
     {
         var sql = "SELECT * FROM [MyDB_データベース].[dbo].[Users_用户]";
 
-    var result = SqlInterrogatorService.SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+        var result = SqlInterrogatorService.SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().Contain("MyDB_データベース");
     }
-
-    #endregion
 }

@@ -4,8 +4,6 @@ using FluentAssertions;
 
 public class ExtractFirstTableNameFromSelectClauseInSql_Should
 {
-    #region Single Table Name Tests
-
     [Fact]
     public void ReturnTableName_WhenSingleBracketedTableName()
     {
@@ -32,10 +30,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
 
         _ = result.Should().Be("Users");
     }
-
-    #endregion
-
-    #region Two-Part Identifier Tests (schema.table)
 
     [Fact]
     public void ReturnTableName_WhenTwoPartBracketedIdentifier()
@@ -73,10 +67,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
         _ = result.Should().Be("Users");
     }
 
-    #endregion
-
-    #region Three-Part Identifier Tests (database.schema.table)
-
     [Fact]
     public void ReturnTableName_WhenThreePartBracketedIdentifier()
     {
@@ -113,10 +103,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
         _ = result.Should().Be("Users");
     }
 
-    #endregion
-
-    #region Four-Part Identifier Tests (server.database.schema.table)
-
     [Fact]
     public void ReturnTableName_WhenFourPartBracketedIdentifier()
     {
@@ -134,10 +120,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
 
         _ = result.Should().Be("Users");
     }
-
-    #endregion
-
-    #region Column List Variations
 
     [Fact]
     public void ReturnTableName_WhenSelectWithMultipleColumns()
@@ -175,10 +157,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
         _ = result.Should().Be("Users");
     }
 
-    #endregion
-
-    #region Table Aliases
-
     [Fact]
     public void ReturnTableName_WhenTableHasAsAlias()
     {
@@ -206,10 +184,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
         _ = result.Should().Be("Users");
     }
 
-    #endregion
-
-    #region Table Hints
-
     [Fact]
     public void ReturnTableName_WhenTableHasNoLockHint()
     {
@@ -236,10 +210,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
 
         _ = result.Should().Be("Users");
     }
-
-    #endregion
-
-    #region JOIN Clauses
 
     [Fact]
     public void ReturnFirstTableName_WhenInnerJoin()
@@ -295,10 +265,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
         _ = result.Should().Be("Users");
     }
 
-    #endregion
-
-    #region Special Characters in Identifiers
-
     [Fact]
     public void ReturnTableName_WhenTableNameHasUnderscores()
     {
@@ -334,10 +300,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
 
         _ = result.Should().Be("User Accounts");
     }
-
-    #endregion
-
-    #region Comments
 
     [Fact]
     public void ReturnTableName_WhenSqlHasSingleLineComments()
@@ -380,10 +342,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
         _ = result.Should().Be("Users");
     }
 
-    #endregion
-
-    #region Multiline Queries
-
     [Fact]
     public void ReturnTableName_WhenMultilineQuery()
     {
@@ -418,10 +376,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
         _ = result.Should().Be("Users");
     }
 
-    #endregion
-
-    #region Case Insensitivity
-
     [Fact]
     public void ReturnTableName_WhenLowercaseKeywords()
     {
@@ -448,10 +402,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
 
         _ = result.Should().Be("USERS");
     }
-
-    #endregion
-
-    #region Edge Cases
 
     [Fact]
     public void ReturnNull_WhenSqlIsNull()
@@ -494,10 +444,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
 
         _ = result.Should().Be("Users");
     }
-
-    #endregion
-
-    #region Complex Queries
 
     [Fact]
     public void ReturnFirstTableName_WhenComplexJoinQuery()
@@ -542,10 +488,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
         _ = result.Should().Be("Users");
     }
 
-    #endregion
-
-    #region Different SQL Statements
-
     [Fact]
     public void ReturnNull_WhenUpdateStatement()
     {
@@ -572,10 +514,6 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
 
         _ = result.Should().BeNull();
     }
-
-    #endregion
-
-    #region USE Clause Tests
 
     [Fact]
     public void ReturnTableName_WhenQueryHasUseClause()
@@ -618,6 +556,4 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
 
         _ = result.Should().Be("Users");
     }
-
-    #endregion
 }
