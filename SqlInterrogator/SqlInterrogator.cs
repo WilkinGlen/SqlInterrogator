@@ -110,36 +110,36 @@ public static partial class SqlInterrogator
     [GeneratedRegex(@"\s+", RegexOptions.None, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex WhitespaceNormalizationRegex();
 
-    // Pattern 1: Bracketed three-part identifier [db].[schema].[table]
+    // Bracketed three-part identifier [db].[schema].[table]
     // Example: [MyDB].[dbo].[Users], [DB1].[sys].[tables]
     // Negative lookahead (?!\.\[) ensures we don't match part of a four-part identifier
     private const string BracketedThreePartPattern =
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)";
 
-    // Pattern 2: Mixed bracketed/unbracketed [db].schema.table or db.[schema].[table]
+    // Mixed bracketed/unbracketed [db].schema.table or db.[schema].[table]
     // Example: [MyDB].dbo.Users, MyDB.[dbo].[Users]
     private const string MixedThreePartPattern1 =
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+\[([^\]]+)\]\.(?:\[?[^\]\.\s]+\]?)\.(?:\[?[^\]\.\s\(]+\]?)(?!\.)";
     private const string MixedThreePartPattern2 =
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)";
 
-    // Pattern 3: Unbracketed three-part identifier db.schema.table
+    // Unbracketed three-part identifier db.schema.table
     // Example: MyDB.dbo.Users, Database1.sys.objects
     // Negative lookahead (?!\.) ensures we don't match part of a four-part identifier
     private const string UnbracketedThreePartPattern =
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.(\w+)\.(\w+)(?!\.)";
 
-    // Pattern 4: Double-quoted identifiers "db"."schema"."table"
+    // Double-quoted identifiers "db"."schema"."table"
     // Example: "MyDB"."dbo"."Users"
     private const string DoubleQuotedThreePartPattern =
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""";
 
-    // Pattern 5: Mixed quoted and bracketed "db".[schema].[table]
+    // Mixed quoted and bracketed "db".[schema].[table]
     // Example: "MyDB".[dbo].[Users], "MyDB".dbo.Users
     private const string MixedQuotedBracketedPattern =
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+""([^""]+)""\.(?:\[?[^\]\.\s]+\]?)\.(?:\[?[^\]\.\s\(]+\]?)";
 
-    // Pattern 6: Server.database.schema.table (four-part names) - extract database (2nd part)
+    // Server.database.schema.table (four-part names) - extract database (2nd part)
     // Example: [Server1].[MyDB].[dbo].[Users], Server1.MyDB.dbo.Users  
     // Uses non-capturing group for server, captures database
     private const string BracketedFourPartPattern =
@@ -147,12 +147,12 @@ public static partial class SqlInterrogator
     private const string UnbracketedFourPartPattern =
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(?:\w+)\.(\w+)\.(\w+)\.(\w+)(?!\.)";
 
-    // Pattern 7: Handle table hints WITH (NOLOCK) etc
+    // Table hints WITH (NOLOCK) etc
     // Example: [MyDB].[dbo].[Users] WITH (NOLOCK), MyDB.dbo.Users AS u
     private const string BracketedWithHintPattern =
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)";
     private const string UnbracketedWithHintPattern =
-        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)";
+    @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)";
 
     /// <summary>
     /// Extracts all unique database names referenced in a SQL statement.
@@ -191,7 +191,7 @@ public static partial class SqlInterrogator
             return [];
         }
 
-        var databaseNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+      var databaseNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         sql = RemoveComments(sql);
 
         // Pattern array ordered from most specific to least specific
@@ -199,25 +199,25 @@ public static partial class SqlInterrogator
         var patterns = new[]
         {
             // Four-part patterns MUST come first to match before three-part patterns
-            // Pattern 6: Server.database.schema.table (four-part names) - extract database (2nd part)
+            // Server.database.schema.table (four-part names) - extract database (2nd part)
             BracketedFourPartPattern,
-            UnbracketedFourPartPattern,  
+            UnbracketedFourPartPattern,
             // Three-part patterns
-            // Pattern 1: Bracketed three-part identifier [db].[schema].[table]
+            // Bracketed three-part identifier [db].[schema].[table]
             BracketedThreePartPattern,
-            // Pattern 2: Mixed bracketed/unbracketed
+            // Mixed bracketed/unbracketed
             MixedThreePartPattern1,
             MixedThreePartPattern2,
-            // Pattern 3: Unbracketed three-part identifier db.schema.table
+            // Unbracketed three-part identifier db.schema.table
             UnbracketedThreePartPattern,
-            // Pattern 4: Double-quoted identifiers "db"."schema"."table"
+            // Double-quoted identifiers "db"."schema"."table"
             DoubleQuotedThreePartPattern,
-            // Pattern 5: Mixed quoted and bracketed "db".[schema].[table]
+            // Mixed quoted and bracketed "db".[schema].[table]
             MixedQuotedBracketedPattern,
-            // Pattern 7: Handle table hints WITH (NOLOCK) etc
+            // Table hints WITH (NOLOCK) etc
             BracketedWithHintPattern,
             UnbracketedWithHintPattern,
-        };
+      };
 
         // Iterate through patterns and extract database names from matches
         foreach (var pattern in patterns)
@@ -303,35 +303,35 @@ public static partial class SqlInterrogator
         }
 
         // Patterns ordered from most specific to least specific
-        // This ensures four-part names are matched before three-part, etc.
+    // This ensures four-part names are matched before three-part, etc.
         var patterns = new[]
         {
-            // Pattern 1: Four-part names - extract table (4th part) - MUST come before three-part patterns
+            // Four-part names - extract table (4th part) - MUST come before three-part patterns
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]",
             @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\.(\w+)(?!\.\w)",
-            // Pattern 2: Bracketed three-part identifier [db].[schema].[table]
+            // Bracketed three-part identifier [db].[schema].[table]
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
-            // Pattern 3: Mixed bracketed/unbracketed three-part db.schema.table or [db].schema.table
+            // Mixed bracketed/unbracketed three-part db.schema.table or [db].schema.table
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.([^\]\.\s\[]+)\.([^\]\.\s\(\[]+)(?!\.\w)(?!\.\[)",
             @"(?:FROM|JOIN)\s+(\w+)\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
-            // Pattern 4: Unbracketed three-part identifier db.schema.table
+            // Unbracketed three-part identifier db.schema.table
             @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)(?!\.\w)",
-            // Pattern 5: Bracketed two-part identifier [schema].[table]
+            // Bracketed two-part identifier [schema].[table]
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
-            // Pattern 6: Mixed two-part identifier [schema].table
+            // Mixed two-part identifier [schema].table
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.(\w+)(?!\.)(?!\s*\()",
-            // Pattern 7: Unbracketed two-part identifier schema.table
+            // Unbracketed two-part identifier schema.table
             @"(?:FROM|JOIN)\s+(\w+)\.(\w+)(?!\.\w)",
-            // Pattern 8: Double-quoted identifiers (MUST come after bracketed patterns)
+            // Double-quoted identifiers (MUST come after bracketed patterns)
             @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
             @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
             @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""(?!\."")",
             @"(?:FROM|JOIN)\s+""([^""]+)""(?!\."")",
-            // Pattern 9: Single bracketed table name [table]
+            // Single bracketed table name [table]
             @"(?:FROM|JOIN)\s+\[([^\]]+)\](?!\.\[)(?!\.)",
-            // Pattern 10: Single unbracketed table name
+            // Single unbracketed table name
             @"(?:FROM|JOIN)\s+(\w+)(?!\.\w)(?!\s*\()",
-            // Pattern 11: Handle table hints WITH (NOLOCK) etc
+            // Table hints WITH (NOLOCK) etc
             @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)",
             @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)",
         };
@@ -548,7 +548,7 @@ public static partial class SqlInterrogator
     /// </remarks>
     private static (string? DatabaseName, string? TableName, string ColumnName)? ExtractColumnDetailFromExpression(string expression)
     {
-        // Extract alias (explicit or implicit) and get the column part
+        // Extract alias (explicit with AS or implicit) and get the column part
         var (columnPart, aliasName) = ExtractAlias(expression);
         // Check for various expression types
         if (IsLiteral(columnPart))
@@ -726,7 +726,7 @@ public static partial class SqlInterrogator
             // Five-part: [server].[db].[schema].[table].[column]
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 5),
             // Four-part: [db].[schema].[table].[column] or db.schema.table.column
-            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 4),
+            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]$", 4),
             // Three-part: [db].[table].[column] or db.table.column
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 3),
             // Two-part: [table].[column] or table.column
