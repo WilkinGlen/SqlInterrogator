@@ -50,25 +50,25 @@ public class ExtractDatabaseNamesFromSql_Should
     {
         var sql = @"
             SELECT * FROM [DB1].[dbo].[Users] u
-                JOIN [DB2].[dbo].[Orders] o ON u.Id = o.UserId
-                    LEFT JOIN [DB3].[dbo].[Products] p ON o.ProductId = p.Id";
+            JOIN [DB2].[dbo].[Orders] o ON u.Id = o.UserId
+            LEFT JOIN [DB3].[dbo].[Products] p ON o.ProductId = p.Id";
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
-        _ = result.Should().HaveCount(3);
-        _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
-    }
+      _ = result.Should().HaveCount(3);
+      _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
+  }
 
     [Fact]
     public void HandleAllJoinTypes()
     {
-        var sql = @"
-            SELECT * FROM [DB1].[dbo].[Table1]
-                INNER JOIN [DB2].[dbo].[Table2] ON 1=1
-                    LEFT JOIN [DB3].[dbo].[Table3] ON 1=1
-                        RIGHT JOIN [DB4].[dbo].[Table4] ON 1=1
-                            FULL JOIN [DB5].[dbo].[Table5] ON 1=1
-                                CROSS JOIN [DB6].[dbo].[Table6]";
+      var sql = @"
+         SELECT * FROM [DB1].[dbo].[Table1]
+            INNER JOIN [DB2].[dbo].[Table2] ON 1=1
+                LEFT JOIN [DB3].[dbo].[Table3] ON 1=1
+                    RIGHT JOIN [DB4].[dbo].[Table4] ON 1=1
+                        FULL JOIN [DB5].[dbo].[Table5] ON 1=1
+                            CROSS JOIN [DB6].[dbo].[Table6]";
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
@@ -79,8 +79,8 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleTableAliases()
     {
         var sql = @"
-            SELECT * FROM [MyDatabase].[dbo].[Users] AS u
-            WHERE u.Id > 0";
+                SELECT * FROM [MyDatabase].[dbo].[Users] AS u
+                WHERE u.Id > 0";
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
@@ -91,6 +91,7 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleTableHintsWithNoLock()
     {
         var sql = "SELECT * FROM [MyDB].[dbo].[Users] WITH (NOLOCK)";
+
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().ContainSingle().Which.Should().Be("MyDB");
@@ -100,7 +101,7 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleMultipleTablesWithSameDatabase()
     {
         var sql = @"
-          SELECT * FROM [MyDB].[dbo].[Users]
+            SELECT * FROM [MyDB].[dbo].[Users]
             JOIN [MyDB].[dbo].[Orders] ON 1=1";
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
@@ -112,13 +113,13 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleComplexQueryWithMultipleDatabases()
     {
         var sql = @"
-            WITH UserCTE AS (
+                WITH UserCTE AS (
                 SELECT * FROM [DB1].[dbo].[Users])
-            SELECT u.*, o.*, p.*
-            FROM UserCTE u
-                INNER JOIN [DB2].[dbo].[Orders] o ON u.Id = o.UserId
-                    LEFT OUTER JOIN [DB3].[dbo].[Products] p ON o.ProductId = p.Id
-            WHERE u.Active = 1";
+                     SELECT u.*, o.*, p.*
+                FROM UserCTE u
+                 INNER JOIN [DB2].[dbo].[Orders] o ON u.Id = o.UserId
+                     LEFT OUTER JOIN [DB3].[dbo].[Products] p ON o.ProductId = p.Id
+                WHERE u.Active = 1";
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
@@ -126,15 +127,15 @@ public class ExtractDatabaseNamesFromSql_Should
         _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
     }
 
-    [Fact]
+  [Fact]
     public void IgnoreSqlComments()
     {
         var sql = @"
-            -- This is a comment about [FakeDB].[dbo].[FakeTable]
+       -- This is a comment about [FakeDB].[dbo].[FakeTable]
             SELECT * FROM [RealDB].[dbo].[RealTable]
-            /* Multi-line comment
-                with [AnotherFakeDB].[dbo].[AnotherFakeTable]
-            */";
+          /* Multi-line comment
+            with [AnotherFakeDB].[dbo].[AnotherFakeTable]
+          */";
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
@@ -146,7 +147,7 @@ public class ExtractDatabaseNamesFromSql_Should
     {
         var sql = @"
             select * from [DB1].[dbo].[Table1]
-                INNER join [DB2].[dbo].[Table2] on 1=1
+            INNER join [DB2].[dbo].[Table2] on 1=1
             Update [DB3].[dbo].[Table3] set Col = 1";
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
@@ -170,6 +171,7 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleDatabaseNamesWithSpecialCharacters()
     {
         var sql = "SELECT * FROM [My-Database_2024].[dbo].[Users]";
+
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().ContainSingle().Which.Should().Be("My-Database_2024");
@@ -179,15 +181,15 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleMultilineQueries()
     {
         var sql = @"
-            SELECT 
-                u.Name,
+          SELECT 
+            u.Name,
                 o.OrderDate
-            FROM 
-                [Database1].[dbo].[Users] u
+          FROM 
+            [Database1].[dbo].[Users] u
             INNER JOIN 
                 [Database2].[dbo].[Orders] o 
-                ON 
-                    u.Id = o.UserId";
+            ON 
+                u.Id = o.UserId";
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
@@ -213,10 +215,10 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleMergeWithInsertUpdate()
     {
         var sql = @"MERGE MyDB.dbo.Users AS target
-                USING TempDB.dbo.TempUsers AS source
-                ON target.Id = source.Id
-                WHEN MATCHED THEN UPDATE SET target.Name = source.Name
-                WHEN NOT MATCHED THEN INSERT (Id, Name) VALUES (source.Id, source.Name);";
+                    USING TempDB.dbo.TempUsers AS source
+                        ON target.Id = source.Id
+                    WHEN MATCHED THEN UPDATE SET target.Name = source.Name
+                    WHEN NOT MATCHED THEN INSERT (Id, Name) VALUES (source.Id, source.Name);";
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
@@ -229,7 +231,7 @@ public class ExtractDatabaseNamesFromSql_Should
     {
         var sql = @"MERGE [Database1].[dbo].[Target] t
                     USING [Database2].[dbo].[Source] s
-                    ON t.Key = s.Key
+                        ON t.Key = s.Key
                     WHEN MATCHED THEN UPDATE SET t.Value = s.Value;";
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
@@ -267,5 +269,105 @@ public class ExtractDatabaseNamesFromSql_Should
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().Contain("MyDB_データベース");
+    }
+
+    [Fact]
+    public void HandleFivePartIdentifier()
+    {
+        var sql = "SELECT * FROM [Server1].[MyDB].[dbo].[schema].[Users]";
+
+        var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+
+        _ = result.Should().Contain("Server1");
+    }
+
+    [Fact]
+    public void HandleInsertIntoStatement()
+    {
+        var sql = "INSERT INTO [MyDB].[dbo].[Users] (Name) VALUES ('John')";
+
+        var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+
+        _ = result.Should().ContainSingle().Which.Should().Be("MyDB");
+    }
+
+    [Fact]
+    public void HandleUpdateStatement()
+    {
+        var sql = "UPDATE [MyDB].[dbo].[Users] SET Active = 1 WHERE Id = 1";
+
+        var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+
+        _ = result.Should().ContainSingle().Which.Should().Be("MyDB");
+    }
+
+  [Fact]
+    public void HandleDeleteStatement()
+    {
+        var sql = "DELETE FROM [MyDB].[dbo].[Users] WHERE Id = 1";
+
+        var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+
+        _ = result.Should().ContainSingle().Which.Should().Be("MyDB");
+    }
+
+    [Fact]
+    public void HandleCreateTableStatement()
+    {
+        var sql = "CREATE TABLE [MyDB].[dbo].[NewUsers] (Id INT, Name VARCHAR(50))";
+
+        var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+
+        _ = result.Should().ContainSingle().Which.Should().Be("MyDB");
+    }
+
+    [Fact]
+    public void HandleNestedSubqueriesWithDifferentDatabases()
+    {
+            var sql = @"
+            SELECT * FROM [DB1].[dbo].[Users] WHERE Id IN (
+                SELECT UserId FROM [DB2].[dbo].[Orders] WHERE OrderId IN (
+                    SELECT OrderId FROM [DB3].[dbo].[OrderDetails]
+                )
+            )";
+
+        var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+
+        _ = result.Should().HaveCount(3);
+        _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
+    }
+
+    [Fact]
+    public void HandleKoreanCharacters()
+    {
+        var sql = "SELECT * FROM [데이터베이스].[dbo].[사용자]";
+
+        var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+
+        _ = result.Should().Contain("데이터베이스");
+}
+
+    [Fact]
+    public void HandleCyrillicCharacters()
+    {
+        var sql = "SELECT * FROM [БазаДанных].[dbo].[Пользователи]";
+
+        var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+
+        _ = result.Should().Contain("БазаДанных");
+    }
+
+    [Fact]
+    public void HandleMultipleStatementTypes()
+    {
+        var sql = @"
+                    INSERT INTO [DB1].[dbo].[Log] VALUES (1);
+                    SELECT * FROM [DB2].[dbo].[Users];
+                    UPDATE [DB3].[dbo].[Status] SET Value = 1;";
+
+        var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
+
+        _ = result.Should().HaveCount(3);
+      _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
     }
 }

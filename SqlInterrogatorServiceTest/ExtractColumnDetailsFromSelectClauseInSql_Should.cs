@@ -421,8 +421,8 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
     {
         var sql = @"SELECT 
          CASE 
-          WHEN Age < 18 THEN 'Minor'
-  WHEN Age >= 18 AND Age < 65 THEN 'Adult'
+            WHEN Age < 18 THEN 'Minor'
+            WHEN Age >= 18 AND Age < 65 THEN 'Adult'
                 ELSE 'Senior'
          END AS AgeCategory
                 FROM Users";
@@ -436,38 +436,38 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
     [Fact]
     public void HandleArithmeticExpression_WithAlias()
     {
- var sql = "SELECT Price * Quantity AS Total FROM Orders";
+        var sql = "SELECT Price * Quantity AS Total FROM Orders";
 
-      var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
         // Arithmetic with alias returns alias as column name (complex expression behavior)
- _ = result.Should().ContainSingle();
+        _ = result.Should().ContainSingle();
         _ = result[0].Column.ColumnName.Should().Be("Total");
-      _ = result[0].Column.Alias.Should().BeNull();
+        _ = result[0].Column.Alias.Should().BeNull();
     }
 
     [Fact]
     public void HandleArithmeticExpression_WithoutAlias()
     {
-     var sql = "SELECT Price + Tax FROM Orders";
+        var sql = "SELECT Price + Tax FROM Orders";
 
-   var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-    _ = result.Should().BeEmpty(); // Arithmetic expressions without alias return null
+        _ = result.Should().BeEmpty(); // Arithmetic expressions without alias return null
     }
 
     [Fact]
     public void HandleComplexArithmeticWithQualifiedColumns()
     {
-      var sql = "SELECT (o.Price * o.Quantity) - o.Discount AS NetTotal FROM Orders o";
+        var sql = "SELECT (o.Price * o.Quantity) - o.Discount AS NetTotal FROM Orders o";
 
- var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-    // Parser interprets parentheses-separated parts differently, returning unexpected structure
+        // Parser interprets parentheses-separated parts differently, returning unexpected structure
         // Actual behavior: extracts "Discount" with alias "NetTotal"
         _ = result.Should().ContainSingle();
         _ = result[0].Column.Alias.Should().Be("NetTotal");
-}
+    }
 
     [Fact]
     public void HandleSubqueryWithAlias()
@@ -495,22 +495,22 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
     {
         var sql = "SELECT 1, 2, 3, Name FROM Users";
 
-      var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
         _ = result.Should().ContainSingle();
         _ = result[0].Column.ColumnName.Should().Be("Name");
- }
+    }
 
     [Fact]
-    public void SkipStringLiterals()
-    {
+  public void SkipStringLiterals()
+  {
         var sql = "SELECT 'Constant', Name FROM Users";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
         _ = result.Should().ContainSingle();
         _ = result[0].Column.ColumnName.Should().Be("Name");
-  }
+    }
 
     [Fact]
     public void HandleLiteralsWithAliases()
@@ -536,8 +536,8 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
     }
 
     [Fact]
-  public void HandleDenseRankFunction()
-  {
+    public void HandleDenseRankFunction()
+    {
         var sql = "SELECT DENSE_RANK() OVER(PARTITION BY Department ORDER BY Salary) AS Rank FROM Employees";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
@@ -547,10 +547,10 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result[0].Column.Alias.Should().Be("Rank");
     }
 
- [Fact]
+    [Fact]
     public void HandleNtileFunction()
     {
-  var sql = "SELECT NTILE(4) OVER(ORDER BY Salary) AS Quartile FROM Employees";
+        var sql = "SELECT NTILE(4) OVER(ORDER BY Salary) AS Quartile FROM Employees";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
@@ -562,31 +562,31 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
     [Fact]
     public void HandleCastFunction()
     {
-      var sql = "SELECT CAST(Price AS DECIMAL(10,2)) AS FormattedPrice FROM Products";
+        var sql = "SELECT CAST(Price AS DECIMAL(10,2)) AS FormattedPrice FROM Products";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
         // CAST with AS keyword inside parentheses is parsed differently
         // The parser detects the inner AS and extracts that as the alias
- _ = result.Should().ContainSingle();
+        _ = result.Should().ContainSingle();
         _ = result[0].Column.ColumnName.Should().Be("CAST");
     }
 
     [Fact]
-  public void HandleCoalesceFunction()
-  {
-   var sql = "SELECT COALESCE(MiddleName, '') AS MiddleName FROM Users";
+    public void HandleCoalesceFunction()
+    {
+        var sql = "SELECT COALESCE(MiddleName, '') AS MiddleName FROM Users";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-   _ = result.Should().ContainSingle();
+        _ = result.Should().ContainSingle();
         _ = result[0].Column.ColumnName.Should().Be("COALESCE");
         _ = result[0].Column.Alias.Should().Be("MiddleName");
     }
 
     [Fact]
     public void HandleDateFunctions()
-{
+    {
         var sql = "SELECT DATEADD(day, 7, OrderDate) AS DeliveryDate, DATEDIFF(day, OrderDate, GETDATE()) AS DaysAgo FROM Orders";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
@@ -596,66 +596,66 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result[0].Column.Alias.Should().Be("DeliveryDate");
         _ = result[1].Column.ColumnName.Should().Be("DATEDIFF");
         _ = result[1].Column.Alias.Should().Be("DaysAgo");
-    }
+  }
 
     [Fact]
     public void HandleFivePartIdentifier()
     {
-    var sql = "SELECT [Server1].[MyDB].[dbo].[Users].[Name] FROM [Server1].[MyDB].[dbo].[Users]";
+        var sql = "SELECT [Server1].[MyDB].[dbo].[Users].[Name] FROM [Server1].[MyDB].[dbo].[Users]";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
         _ = result.Should().ContainSingle();
-      _ = result[0].DatabaseName.Should().Be("Server1");
+        _ = result[0].DatabaseName.Should().Be("Server1");
         _ = result[0].TableName.Should().Be("Users");
         _ = result[0].Column.ColumnName.Should().Be("Name");
     }
 
     [Fact]
     public void HandleTopClause()
-  {
+    {
         var sql = "SELECT TOP 10 Name, Email FROM Users";
 
-    var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-  _ = result.Should().HaveCount(2);
+        _ = result.Should().HaveCount(2);
         _ = result[0].Column.ColumnName.Should().Be("Name");
         _ = result[1].Column.ColumnName.Should().Be("Email");
     }
 
-    [Fact]
+  [Fact]
     public void HandleTopWithPercent()
     {
-   var sql = "SELECT TOP 25 PERCENT Name FROM Users";
+        var sql = "SELECT TOP 25 PERCENT Name FROM Users";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-// TOP with PERCENT is not fully handled - "PERCENT Name" is treated as single column
+        // TOP with PERCENT is not fully handled - "PERCENT Name" is treated as single column
         _ = result.Should().ContainSingle();
-    _ = result[0].Column.ColumnName.Should().Be("PERCENT Name");
+        _ = result[0].Column.ColumnName.Should().Be("PERCENT Name");
     }
 
     [Fact]
     public void HandleMixedComplexExpressionsAndColumns()
     {
         var sql = @"SELECT 
-          Name,
-            CASE WHEN Age > 18 THEN 'Adult' ELSE 'Minor' END AS AgeGroup,
-   COUNT(*) AS Total,
-     Price * Quantity AS LineTotal
- FROM Users";
+                        Name,
+                        CASE WHEN Age > 18 THEN 'Adult' ELSE 'Minor' END AS AgeGroup,
+                        COUNT(*) AS Total,
+                        Price * Quantity AS LineTotal
+                    FROM Users";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-    // Complex expressions with aliases return alias as column name
- _ = result.Should().HaveCount(4);
+        // Complex expressions with aliases return alias as column name
+        _ = result.Should().HaveCount(4);
         _ = result[0].Column.ColumnName.Should().Be("Name");
-_ = result[1].Column.ColumnName.Should().Be("AgeGroup"); // Alias becomes column name for CASE
-  _ = result[1].Column.Alias.Should().BeNull();
-   _ = result[2].Column.ColumnName.Should().Be("COUNT");
+        _ = result[1].Column.ColumnName.Should().Be("AgeGroup"); // Alias becomes column name for CASE
+        _ = result[1].Column.Alias.Should().BeNull();
+        _ = result[2].Column.ColumnName.Should().Be("COUNT");
         _ = result[2].Column.Alias.Should().Be("Total");
         _ = result[3].Column.ColumnName.Should().Be("LineTotal"); // Alias becomes column name for arithmetic
-      _ = result[3].Column.Alias.Should().BeNull();
+        _ = result[3].Column.Alias.Should().BeNull();
     }
 
     [Fact]
@@ -679,7 +679,7 @@ _ = result[1].Column.ColumnName.Should().Be("AgeGroup"); // Alias becomes column
 
         _ = result.Should().ContainSingle();
         _ = result[0].Column.ColumnName.Should().Be("UPPER");
-    _ = result[0].Column.Alias.Should().Be("CleanName");
+        _ = result[0].Column.Alias.Should().Be("CleanName");
     }
 
     [Fact]
@@ -687,71 +687,187 @@ _ = result[1].Column.ColumnName.Should().Be("AgeGroup"); // Alias becomes column
     {
         var sql = "SELECT Name AS \"Full Name\", Email FROM Users";
 
-     var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-      _ = result.Should().HaveCount(2);
+        _ = result.Should().HaveCount(2);
         _ = result[0].Column.Alias.Should().Be("Full Name");
         _ = result[0].Column.ColumnName.Should().Be("Name");
-    _ = result[1].Column.ColumnName.Should().Be("Email");
-    }
+        _ = result[1].Column.ColumnName.Should().Be("Email");
+}
 
-    [Fact]
+ [Fact]
     public void HandleConvertFunction()
     {
-     var sql = "SELECT CONVERT(VARCHAR(10), OrderDate, 101) AS FormattedDate FROM Orders";
+        var sql = "SELECT CONVERT(VARCHAR(10), OrderDate, 101) AS FormattedDate FROM Orders";
 
-     var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-      _ = result.Should().ContainSingle();
-      _ = result[0].Column.ColumnName.Should().Be("CONVERT");
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("CONVERT");
         _ = result[0].Column.Alias.Should().Be("FormattedDate");
     }
 
     [Fact]
     public void HandleIsNullFunction()
-    {
+{
         var sql = "SELECT ISNULL(MiddleName, 'N/A') AS MiddleName FROM Users";
 
- var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-   _ = result.Should().ContainSingle();
-     _ = result[0].Column.ColumnName.Should().Be("ISNULL");
-  _ = result[0].Column.Alias.Should().Be("MiddleName");
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("ISNULL");
+        _ = result[0].Column.Alias.Should().Be("MiddleName");
     }
 
     [Fact]
     public void HandleSubstringFunction()
-    {
+{
         var sql = "SELECT SUBSTRING(Name, 1, 3) AS NamePrefix FROM Users";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-    _ = result.Should().ContainSingle();
+        _ = result.Should().ContainSingle();
         _ = result[0].Column.ColumnName.Should().Be("SUBSTRING");
         _ = result[0].Column.Alias.Should().Be("NamePrefix");
     }
 
     [Fact]
- public void HandlePercentRankFunction()
-  {
-  var sql = "SELECT PERCENT_RANK() OVER(ORDER BY Salary) AS PercentRank FROM Employees";
+    public void HandlePercentRankFunction()
+    {
+     var sql = "SELECT PERCENT_RANK() OVER(ORDER BY Salary) AS PercentRank FROM Employees";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
-   _ = result.Should().ContainSingle();
-   _ = result[0].Column.ColumnName.Should().Be("PERCENT_RANK");
-_ = result[0].Column.Alias.Should().Be("PercentRank");
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("PERCENT_RANK");
+        _ = result[0].Column.Alias.Should().Be("PercentRank");
     }
 
     [Fact]
     public void HandleCumeDistFunction()
     {
-     var sql = "SELECT CUME_DIST() OVER(ORDER BY Salary) AS CumulativeDistribution FROM Employees";
+        var sql = "SELECT CUME_DIST() OVER(ORDER BY Salary) AS CumulativeDistribution FROM Employees";
 
-   var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
         _ = result.Should().ContainSingle();
         _ = result[0].Column.ColumnName.Should().Be("CUME_DIST");
-    _ = result[0].Column.Alias.Should().Be("CumulativeDistribution");
+        _ = result[0].Column.Alias.Should().Be("CumulativeDistribution");
+    }
+
+    [Fact]
+    public void HandleSumWindowFunction()
+    {
+        var sql = "SELECT SUM(Amount) OVER(PARTITION BY Category) AS TotalByCategory FROM Transactions";
+
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("SUM");
+        _ = result[0].Column.Alias.Should().Be("TotalByCategory");
+    }
+
+    [Fact]
+    public void HandleAvgWindowFunction()
+{
+        var sql = "SELECT AVG(Price) OVER(ORDER BY Date) AS MovingAverage FROM Products";
+
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("AVG");
+        _ = result[0].Column.Alias.Should().Be("MovingAverage");
+}
+
+    [Fact]
+    public void HandleLeftRightFunctions()
+    {
+        var sql = "SELECT LEFT(Name, 3) AS FirstThree, RIGHT(Name, 3) AS LastThree FROM Users";
+
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().HaveCount(2);
+        _ = result[0].Column.ColumnName.Should().Be("LEFT");
+        _ = result[0].Column.Alias.Should().Be("FirstThree");
+        _ = result[1].Column.ColumnName.Should().Be("RIGHT");
+        _ = result[1].Column.Alias.Should().Be("LastThree");
+    }
+
+    [Fact]
+    public void HandleUpperLowerFunctions()
+    {
+        var sql = "SELECT UPPER(FirstName) AS UpperFirst, LOWER(LastName) AS LowerLast FROM Users";
+
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().HaveCount(2);
+        _ = result[0].Column.ColumnName.Should().Be("UPPER");
+        _ = result[0].Column.Alias.Should().Be("UpperFirst");
+        _ = result[1].Column.ColumnName.Should().Be("LOWER");
+        _ = result[1].Column.Alias.Should().Be("LowerLast");
+    }
+
+    [Fact]
+    public void HandleGetDateFunction()
+    {
+        var sql = "SELECT GETDATE() AS CurrentDateTime FROM Users";
+
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("GETDATE");
+        _ = result[0].Column.Alias.Should().Be("CurrentDateTime");
+    }
+
+    [Fact]
+    public void HandleDatePartFunction()
+    {
+        var sql = "SELECT DATEPART(year, OrderDate) AS OrderYear FROM Orders";
+
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("DATEPART");
+        _ = result[0].Column.Alias.Should().Be("OrderYear");
+    }
+
+    [Fact]
+    public void HandleMixedBracketAndDoubleQuoteIdentifiers()
+    {
+        var sql = "SELECT [u].[Name], \"Email\" AS \"E-Mail\" FROM Users u";
+
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().HaveCount(2);
+        _ = result[0].Column.ColumnName.Should().Be("Name");
+        _ = result[0].TableName.Should().Be("u");
+        _ = result[1].Column.ColumnName.Should().Be("Email");
+        _ = result[1].Column.Alias.Should().Be("E-Mail");
+  }
+
+    [Fact]
+    public void HandleExtraWhitespace()
+    {
+        var sql = "SELECT    Name ,    Email AS   EmailAddress FROM   Users";
+
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().HaveCount(2);
+        _ = result[0].Column.ColumnName.Should().Be("Name");
+        _ = result[1].Column.ColumnName.Should().Be("Email");
+        _ = result[1].Column.Alias.Should().Be("EmailAddress");
+    }
+
+    [Fact]
+    public void HandleReservedKeywordColumnNames()
+    {
+        var sql = "SELECT [Select], [From], [Where] FROM Keywords";
+
+        var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().HaveCount(3);
+        _ = result[0].Column.ColumnName.Should().Be("Select");
+        _ = result[1].Column.ColumnName.Should().Be("From");
+        _ = result[2].Column.ColumnName.Should().Be("Where");
     }
 }

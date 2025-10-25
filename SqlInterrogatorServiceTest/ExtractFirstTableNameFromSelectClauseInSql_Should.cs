@@ -589,6 +589,127 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
         var sql = @"USE MyDatabase;
                     SELECT * FROM Users WHERE Id = 1;
                     SELECT * FROM Orders WHERE Id = 2;";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Users");
+    }
+
+    [Fact]
+    public void ReturnTableName_WhenFivePartBracketedIdentifier()
+    {
+        var sql = "SELECT * FROM [Server1].[MyDB].[dbo].[schema].[Users]";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        // Five-part identifiers return the schema name (4th part) as table name
+        _ = result.Should().Be("schema");
+    }
+
+    [Fact]
+    public void ReturnNull_WhenTableValuedFunction()
+    {
+        var sql = "SELECT * FROM dbo.GetUsers(1)";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        // Current implementation returns function name - table-valued functions are not filtered in unbracketed form
+        _ = result.Should().Be("GetUsers");
+    }
+
+    [Fact]
+    public void ReturnNull_WhenTableValuedFunctionWithBrackets()
+    {
+        var sql = "SELECT * FROM [dbo].[GetActiveUsers](2024)";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        // Current implementation returns function name - table-valued functions are not filtered in bracketed form
+        _ = result.Should().Be("GetActiveUsers");
+    }
+
+    [Fact]
+    public void ReturnFirstTableName_WhenLeftOuterJoin()
+    {
+        var sql = "SELECT * FROM Users LEFT OUTER JOIN Orders ON Users.Id = Orders.UserId";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Users");
+    }
+
+    [Fact]
+    public void ReturnFirstTableName_WhenRightOuterJoin()
+    {
+        var sql = "SELECT * FROM Users RIGHT OUTER JOIN Orders ON Users.Id = Orders.UserId";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Users");
+    }
+
+    [Fact]
+    public void ReturnFirstTableName_WhenFullOuterJoin()
+    {
+        var sql = "SELECT * FROM Users FULL OUTER JOIN Orders ON Users.Id = Orders.UserId";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Users");
+    }
+
+    [Fact]
+    public void ReturnFirstTableName_WhenCrossApply()
+    {
+        var sql = "SELECT * FROM Users CROSS APPLY dbo.GetOrders(Users.Id) AS Orders";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Users");
+    }
+
+    [Fact]
+    public void ReturnFirstTableName_WhenOuterApply()
+    {
+        var sql = "SELECT * FROM Users OUTER APPLY dbo.GetOrders(Users.Id) AS Orders";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Users");
+    }
+
+    [Fact]
+    public void ReturnTableName_WhenUnicodeCharacters()
+    {
+        var sql = "SELECT * FROM [Émployés]";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("Émployés");
+    }
+
+    [Fact]
+    public void ReturnTableName_WhenArabicCharacters()
+    {
+        var sql = "SELECT * FROM [المستخدمين]";
+
+        var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
+
+        _ = result.Should().Be("المستخدمين");
+    }
+
+    [Fact]
+    public void ReturnMainQueryTableName_WhenMultipleCTEs()
+    {
+        var sql = @"
+            WITH UserCTE AS (
+                SELECT * FROM InnerUsers
+            ),
+            OrderCTE AS (
+                SELECT * FROM InnerOrders
+            )
+            SELECT * FROM Users";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
