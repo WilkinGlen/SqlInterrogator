@@ -191,7 +191,7 @@ public static partial class SqlInterrogator
             return [];
         }
 
-      var databaseNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var databaseNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         sql = RemoveComments(sql);
 
         // Pattern array ordered from most specific to least specific
@@ -303,7 +303,7 @@ public static partial class SqlInterrogator
         }
 
         // Patterns ordered from most specific to least specific
-    // This ensures four-part names are matched before three-part, etc.
+        // This ensures four-part names are matched before three-part, etc.
         var patterns = new[]
         {
             // Four-part names - extract table (4th part) - MUST come before three-part patterns
@@ -793,13 +793,11 @@ public static partial class SqlInterrogator
     /// </remarks>
     private static string ExtractDatabaseNameFromMatch(Match match)
     {
-        return match.Groups[DatabaseGroupIndex].Success &&
-                    !string.IsNullOrWhiteSpace(match.Groups[DatabaseGroupIndex].Value)
+        return match.Groups[DatabaseGroupIndex].Success && !string.IsNullOrWhiteSpace(match.Groups[DatabaseGroupIndex].Value)
              ? match.Groups[DatabaseGroupIndex].Value
-                     : match.Groups[SecondaryDatabaseGroupIndex].Success &&
-              !string.IsNullOrWhiteSpace(match.Groups[SecondaryDatabaseGroupIndex].Value)
+             : match.Groups[SecondaryDatabaseGroupIndex].Success && !string.IsNullOrWhiteSpace(match.Groups[SecondaryDatabaseGroupIndex].Value)
                ? match.Groups[SecondaryDatabaseGroupIndex].Value
-                     : string.Empty;
+               : string.Empty;
     }
 
     /// <summary>
