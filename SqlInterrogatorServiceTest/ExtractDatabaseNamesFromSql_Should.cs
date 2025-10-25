@@ -51,7 +51,7 @@ public class ExtractDatabaseNamesFromSql_Should
         var result = SqlInterrogatorService.SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().HaveCount(3);
-        _ = result.Should().Contain(new[] { "DB1", "DB2", "DB3" });
+        _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class ExtractDatabaseNamesFromSql_Should
         var result = SqlInterrogatorService.SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().HaveCount(3);
-        _ = result.Should().Contain(new[] { "DB1", "DB2", "DB3" });
+        _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public class ExtractDatabaseNamesFromSql_Should
         var result = SqlInterrogatorService.SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().HaveCount(2);
-        _ = result.Should().Contain(new[] { "Database1", "Database2" });
+        _ = result.Should().Contain(["Database1", "Database2"]);
     }
 
     #region MERGE Statement Tests
