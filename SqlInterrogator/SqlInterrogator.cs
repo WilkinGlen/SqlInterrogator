@@ -105,6 +105,14 @@ public static partial class SqlInterrogator
     [GeneratedRegex(@"SELECT\s+", RegexOptions.IgnoreCase)]
     private static partial Regex SubqueryDetectionRegex();
 
+    /// <summary>Matches four-part identifier prefix pattern (word. or [word].) before FROM/JOIN keywords.</summary>
+    [GeneratedRegex(@"(\w+|\[[^\]]+\])\.\s*$")]
+    private static partial Regex FourPartIdentifierPrefixRegex();
+
+    /// <summary>Matches whitespace for normalization.</summary>
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceNormalizationRegex();
+
     #endregion
 
     #region Pattern Constants
@@ -127,7 +135,6 @@ public static partial class SqlInterrogator
     // Negative lookahead (?!\.) ensures we don't match part of a four-part identifier
     private const string UnbracketedThreePartPattern =
         @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.(\w+)\.(\w+)(?!\.)";
-
 
     // Pattern 4: Double-quoted identifiers "db"."schema"."table"
     // Example: "MyDB"."dbo"."Users"
@@ -238,7 +245,7 @@ public static partial class SqlInterrogator
                     // Look backwards for a potential fourth part
                     var beforeMatch = sql.Substring(Math.Max(0, matchStart - 50), Math.Min(50, matchStart));
                     // If we find a pattern like "word." or "[word]." right before FROM/JOIN/etc, skip
-                    if (Regex.IsMatch(beforeMatch, @"(\w+|\[[^\]]+\])\.\s*$"))
+                    if (FourPartIdentifierPrefixRegex().IsMatch(beforeMatch))
                     {
                         // This might be part of a four-part identifier, but only skip if the current match is three-part
                         // Count dots in the matched pattern to determine if it's three-part
@@ -334,22 +341,22 @@ public static partial class SqlInterrogator
             // Pattern 7: Unbracketed two-part identifier schema.table
             @"(?:FROM|JOIN)\s+(\w+)\.(\w+)(?!\.\w)",
 
-            // Pattern 8: Double-quoted identifiers
+            // Pattern 8: Double-quoted identifiers (MUST come after bracketed patterns)
             @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
             @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
-            @"(?:FROM|JOIN)\s+""([^""]+)""\.""""([^""]+)""(?!\.)(?!\."")",
+            @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""(?!\."")",
             @"(?:FROM|JOIN)\s+""([^""]+)""(?!\."")",
 
             // Pattern 9: Single bracketed table name [table]
             @"(?:FROM|JOIN)\s+\[([^\]]+)\](?!\.\[)(?!\.)",
 
-            // Pattern 10: Single unbracketed table name
-            @"(?:FROM|JOIN)\s+(\w+)(?!\.\w)(?!\s*\()",
+      // Pattern 10: Single unbracketed table name
+   @"(?:FROM|JOIN)\s+(\w+)(?!\.\w)(?!\s*\()",
 
-            // Pattern 11: Handle table hints WITH (NOLOCK) etc
-            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)",
-            @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)",
-        };
+     // Pattern 11: Handle table hints WITH (NOLOCK) etc
+     @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)",
+    @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)",
+   };
 
         // Try each pattern in order until a match is found
         foreach (var pattern in patterns)
@@ -675,28 +682,28 @@ public static partial class SqlInterrogator
     /// <returns>True if the expression is a complex expression; otherwise, false.</returns>
     private static bool IsComplexExpression(string columnPart)
     {
-        // Normalize whitespace for better pattern matching
-        var normalizedPart = Regex.Replace(columnPart.Trim(), @"\s+", " ");
+      // Normalize whitespace for better pattern matching
+     var normalizedPart = WhitespaceNormalizationRegex().Replace(columnPart.Trim(), " ");
         var upperPart = normalizedPart.ToUpperInvariant();
 
-        // Check for CASE expressions (handles multiline)
+  // Check for CASE expressions (handles multiline)
         if (upperPart.StartsWith("CASE") || upperPart.Contains(" CASE ") || upperPart.Contains(" WHEN "))
-        {
+  {
             return true;
-        }
+      }
 
         // Check for arithmetic operators (+-*/) but only if there's NO qualified column
         // If it has a table.column reference (contains dot before the operator), it's OK
         var hasDot = upperPart.Contains('.');
         var hasArithmetic = 
             upperPart.Contains(" + ") || 
-            upperPart.Contains(" - ") ||
-            upperPart.Contains(" * ") ||
+    upperPart.Contains(" - ") ||
+   upperPart.Contains(" * ") ||
             upperPart.Contains(" / ");
 
         // Only treat as complex if it has arithmetic BUT no table qualification
         return hasArithmetic && !hasDot;
-    }
+  }
 
     /// <summary>
     /// Determines whether a column part is a function call and extracts the function name.
