@@ -9,6 +9,7 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleBracketedIdentifiers()
     {
         var sql = "SELECT * FROM [MyDatabase].[dbo].[Users]";
+
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().ContainSingle().Which.Should().Be("MyDatabase");
@@ -18,6 +19,7 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleUnbracketedIdentifiers()
     {
         var sql = "SELECT * FROM MyDatabase.dbo.Users";
+
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().ContainSingle().Which.Should().Be("MyDatabase");
@@ -27,6 +29,7 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleMixedBracketedAndUnbracketed()
     {
         var sql = "SELECT * FROM [MyDatabase].dbo.Users";
+
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().ContainSingle().Which.Should().Be("MyDatabase");
@@ -36,6 +39,7 @@ public class ExtractDatabaseNamesFromSql_Should
     public void HandleDoubleQuotedIdentifiers()
     {
         var sql = "SELECT * FROM \"MyDatabase\".\"dbo\".\"Users\"";
+
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().ContainSingle().Which.Should().Be("MyDatabase");

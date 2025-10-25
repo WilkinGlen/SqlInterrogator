@@ -9,6 +9,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenSingleBracketedTableName()
     {
         var sql = "SELECT * FROM [Users]";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -18,6 +19,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenSingleUnbracketedTableName()
     {
         var sql = "SELECT * FROM Users";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -27,6 +29,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenSingleDoubleQuotedTableName()
     {
         var sql = "SELECT * FROM \"Users\"";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -36,6 +39,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTwoPartBracketedIdentifier()
     {
         var sql = "SELECT * FROM [dbo].[Users]";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -45,6 +49,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTwoPartUnbracketedIdentifier()
     {
         var sql = "SELECT * FROM dbo.Users";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -54,6 +59,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTwoPartDoubleQuotedIdentifier()
     {
         var sql = "SELECT * FROM \"dbo\".\"Users\"";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -63,6 +69,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTwoPartMixedBracketedAndUnbracketed()
     {
         var sql = "SELECT * FROM [dbo].Users";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -72,6 +79,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenThreePartBracketedIdentifier()
     {
         var sql = "SELECT * FROM [MyDatabase].[dbo].[Users]";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -81,6 +89,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenThreePartUnbracketedIdentifier()
     {
         var sql = "SELECT * FROM MyDatabase.dbo.Users";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -90,6 +99,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenThreePartDoubleQuotedIdentifier()
     {
         var sql = "SELECT * FROM \"MyDatabase\".\"dbo\".\"Users\"";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -99,6 +109,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenThreePartMixedIdentifiers()
     {
         var sql = "SELECT * FROM [MyDatabase].dbo.Users";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -108,6 +119,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenFourPartBracketedIdentifier()
     {
         var sql = "SELECT * FROM [Server1].[MyDatabase].[dbo].[Users]";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -117,6 +129,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenFourPartUnbracketedIdentifier()
     {
         var sql = "SELECT * FROM Server1.MyDatabase.dbo.Users";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -126,6 +139,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenSelectWithMultipleColumns()
     {
         var sql = "SELECT col1, col2, col3 FROM Users";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -135,6 +149,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenSelectWithBracketedColumns()
     {
         var sql = "SELECT [col1], [col2] FROM [Users]";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -144,6 +159,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenSelectWithQualifiedColumns()
     {
         var sql = "SELECT u.Name, u.Email FROM Users u";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -153,6 +169,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenSelectWithDoubleQuotedColumns()
     {
         var sql = "SELECT \"col1\", \"col2\" FROM \"Users\"";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -162,6 +179,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTableHasAsAlias()
     {
         var sql = "SELECT * FROM Users AS u";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -171,6 +189,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTableHasImplicitAlias()
     {
         var sql = "SELECT * FROM Users u";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -180,6 +199,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenBracketedTableHasAlias()
     {
         var sql = "SELECT * FROM [dbo].[Users] AS u";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -189,6 +209,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTableHasNoLockHint()
     {
         var sql = "SELECT * FROM Users WITH (NOLOCK)";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -198,6 +219,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenThreePartTableHasNoLockHint()
     {
         var sql = "SELECT * FROM MyDB.dbo.Users WITH (NOLOCK)";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -207,6 +229,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTableHasMultipleHints()
     {
         var sql = "SELECT * FROM [Users] WITH (NOLOCK, READPAST)";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -216,6 +239,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnFirstTableName_WhenInnerJoin()
     {
         var sql = "SELECT * FROM Users INNER JOIN Orders ON Users.Id = Orders.UserId";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -225,6 +249,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnFirstTableName_WhenLeftJoin()
     {
         var sql = "SELECT * FROM Users LEFT JOIN Orders ON Users.Id = Orders.UserId";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -234,6 +259,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnFirstTableName_WhenRightJoin()
     {
         var sql = "SELECT * FROM Users RIGHT JOIN Orders ON Users.Id = Orders.UserId";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -243,6 +269,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnFirstTableName_WhenFullJoin()
     {
         var sql = "SELECT * FROM Users FULL JOIN Orders ON Users.Id = Orders.UserId";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -252,6 +279,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnFirstTableName_WhenCrossJoin()
     {
         var sql = "SELECT * FROM Users CROSS JOIN Orders";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -261,6 +289,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnFirstTableName_WhenJoinWithBracketedTableNames()
     {
         var sql = "SELECT * FROM [dbo].[Users] JOIN [dbo].[Orders] ON [Users].[Id] = [Orders].[UserId]";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -270,6 +299,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTableNameHasUnderscores()
     {
         var sql = "SELECT * FROM User_Accounts";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("User_Accounts");
@@ -279,6 +309,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTableNameHasNumbers()
     {
         var sql = "SELECT * FROM Users2024";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users2024");
@@ -288,6 +319,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenBracketedTableNameHasSpecialCharacters()
     {
         var sql = "SELECT * FROM [User-Accounts_2024]";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("User-Accounts_2024");
@@ -297,6 +329,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenTableNameHasSpaces()
     {
         var sql = "SELECT * FROM [User Accounts]";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("User Accounts");
@@ -381,6 +414,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenLowercaseKeywords()
     {
         var sql = "select * from Users";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -390,6 +424,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenMixedCaseKeywords()
     {
         var sql = "SeLeCt * FrOm Users";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");
@@ -399,6 +434,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenUppercaseKeywords()
     {
         var sql = "SELECT * FROM USERS";
+
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("USERS");
@@ -520,7 +556,7 @@ public class ExtractFirstTableNameFromSelectClauseInSql_Should
     public void ReturnTableName_WhenQueryHasUseClause()
     {
         var sql = @"USE MyDatabase;
-            SELECT * FROM Users";
+                    SELECT * FROM Users";
         var result = SqlInterrogator.ExtractFirstTableNameFromSelectClauseInSql(sql);
 
         _ = result.Should().Be("Users");

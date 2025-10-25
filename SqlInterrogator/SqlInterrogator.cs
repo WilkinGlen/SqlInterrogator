@@ -382,20 +382,20 @@ public static partial class SqlInterrogator
     /// <list type="bullet">
     /// <item><c>DatabaseName</c> - The database name if specified (e.g., from DB.Table.Column), otherwise null</item>
     /// <item><c>TableName</c> - The table name or alias if specified (e.g., from Table.Column), otherwise null</item>
-    /// <item><c>ColumnName</c> - The column name or alias (always populated for valid columns)</item>
+    /// <item><c>Column</c> - A tuple containing ColumnName (the actual column name) and Alias (the alias if specified, otherwise null)</item>
     /// </list>
     /// Returns an empty list if the SQL is not a SELECT statement or contains no columns.
     /// </returns>
     /// <remarks>
     /// <para>This method handles:</para>
     /// <list type="bullet">
-    /// <item>SELECT * returns a single entry with ColumnName = "*"</item>
-    /// <item>Simple columns: SELECT Name → (null, null, "Name")</item>
-    /// <item>Qualified columns: SELECT u.Name → (null, "u", "Name")</item>
-    /// <item>Fully qualified: SELECT DB.dbo.Users.Name → ("DB", "Users", "Name")</item>
-    /// <item>Explicit aliases: SELECT Name AS FullName → ColumnName = "FullName"</item>
-    /// <item>Implicit aliases: SELECT u.Name UserName → ColumnName = "UserName"</item>
-    /// <item>Functions: SELECT COUNT(*) AS Total → (null, null, "Total")</item>
+    /// <item>SELECT * returns a single entry with ColumnName = "*", Alias = null</item>
+    /// <item>Simple columns: SELECT Name → (null, null, (ColumnName: "Name", Alias: null))</item>
+    /// <item>Qualified columns: SELECT u.Name → (null, "u", (ColumnName: "Name", Alias: null))</item>
+    /// <item>Fully qualified: SELECT DB.dbo.Users.Name → ("DB", "Users", (ColumnName: "Name", Alias: null))</item>
+    /// <item>Explicit aliases: SELECT Name AS FullName → Column = (ColumnName: "Name", Alias: "FullName")</item>
+    /// <item>Implicit aliases: SELECT u.Name UserName → Column = (ColumnName: "Name", Alias: "UserName")</item>
+    /// <item>Functions: SELECT COUNT(*) AS Total → (null, null, (ColumnName: "COUNT", Alias: "Total"))</item>
     /// <item>DISTINCT and TOP keywords are automatically removed</item>
     /// <item>Comments, CTEs, and USE statements are automatically removed</item>
     /// </list>
@@ -406,19 +406,19 @@ public static partial class SqlInterrogator
     /// var columns = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
     /// // Result:
     /// // [
-    /// //   (null, "u", "Name"),
-    /// //   (null, "u", "EmailAddress"),
-    /// //   (null, null, "Total")
+    /// //   (null, "u", (ColumnName: "Name", Alias: null)),
+    /// //   (null, "u", (ColumnName: "Email", Alias: "EmailAddress")),
+    /// //   (null, null, (ColumnName: "COUNT", Alias: "Total"))
     /// // ]
     /// 
     /// var sql2 = "SELECT MyDB.dbo.Users.FirstName FROM MyDB.dbo.Users";
     /// var columns2 = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql2);
-    /// // Result: [(MyDB", "Users", "FirstName")]
+    /// // Result: [("MyDB", "Users", (ColumnName: "FirstName", Alias: null))]
     /// </code>
     /// </example>
-    public static List<(string? DatabaseName, string? TableName, string ColumnName)> ExtractColumnDetailsFromSelectClauseInSql(string sql)
+    public static List<(string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)> ExtractColumnDetailsFromSelectClauseInSql(string sql)
     {
-        var columns = new List<(string? DatabaseName, string? TableName, string ColumnName)>();
+        var columns = new List<(string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)>();
         if (string.IsNullOrWhiteSpace(sql))
         {
             return columns;
@@ -428,6 +428,7 @@ public static partial class SqlInterrogator
         sql = RemoveComments(sql);
         sql = RemoveCTEs(sql);
         sql = RemoveUseStatements(sql);
+
         // Only process SELECT statements
         if (!IgnoreCaseRegex().IsMatch(sql))
         {
@@ -445,15 +446,17 @@ public static partial class SqlInterrogator
 
         // Remove DISTINCT, ALL, TOP keywords as they don't affect column extraction
         selectClause = DistinctTopRegex().Replace(selectClause, "");
+
         // Handle SELECT * as a special case
         if (SelectStarRegex().IsMatch(selectClause.Trim()))
         {
-            columns.Add((null, null, "*"));
+            columns.Add((null, null, ("*", null)));
             return columns;
         }
 
         // Split by comma, but not within parentheses (for functions like CONCAT, SUBSTRING, etc.)
         var columnExpressions = SplitByCommaRespectingParentheses(selectClause);
+
         // Process each column expression
         foreach (var expr in columnExpressions)
         {
@@ -530,26 +533,27 @@ public static partial class SqlInterrogator
     /// </summary>
     /// <param name="expression">A single column expression from a SELECT clause.</param>
     /// <returns>
-    /// A tuple with (DatabaseName, TableName, ColumnName) if the expression is valid,
+    /// A tuple with (DatabaseName, TableName, (ColumnName, Alias)) if the expression is valid,
     /// otherwise null. Literals and invalid expressions return null.
     /// </returns>
     /// <remarks>
     /// <para>Handles various expression types:</para>
     /// <list type="bullet">
-    /// <item>Simple: "Name" → (null, null, "Name")</item>
-    /// <item>Qualified: "Table.Column" → (null, "Table", "Column")</item>
-    /// <item>Fully qualified: "DB.Schema.Table.Column" → ("DB", "Table", "Column")</item>
-    /// <item>Explicit aliases: "Name AS FullName" → ColumnName = "FullName"</item>
-    /// <item>Implicit aliases: "Table.Column UserName" → ColumnName = "UserName"</item>
-    /// <item>Functions: "COUNT(*) AS Total" → (null, null, "Total")</item>
+    /// <item>Simple: "Name" → (null, null, (ColumnName: "Name", Alias: null))</item>
+    /// <item>Qualified: "Table.Column" → (null, "Table", (ColumnName: "Column", Alias: null))</item>
+    /// <item>Fully qualified: "DB.Schema.Table.Column" → ("DB", "Table", (ColumnName: "Column", Alias: null))</item>
+    /// <item>Explicit aliases: "Name AS FullName" → Column = (ColumnName: "Name", Alias: "FullName")</item>
+    /// <item>Implicit aliases: "Table.Column UserName" → Column = (ColumnName: "Column", Alias: "UserName")</item>
+    /// <item>Functions: "COUNT(*) AS Total" → (null, null, (ColumnName: "COUNT", Alias: "Total"))</item>
     /// <item>DISTINCT and TOP keywords are automatically removed</item>
     /// <item>Comments, CTEs, and USE statements are automatically removed</item>
     /// </list>
     /// </remarks>
-    private static (string? DatabaseName, string? TableName, string ColumnName)? ExtractColumnDetailFromExpression(string expression)
+    private static (string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)? ExtractColumnDetailFromExpression(string expression)
     {
         // Extract alias (explicit with AS or implicit) and get the column part
         var (columnPart, aliasName) = ExtractAlias(expression);
+
         // Check for various expression types
         if (IsLiteral(columnPart))
         {
@@ -559,22 +563,21 @@ public static partial class SqlInterrogator
         if (IsSubquery(columnPart))
         {
             // Subquery: use alias if provided, otherwise return null
-            return aliasName != null ? (null, null, aliasName) : null;
+            return aliasName != null ? (null, null, (aliasName, null)) : null;
         }
 
         // Check for complex expressions (CASE, arithmetic, etc.)
         if (IsComplexExpression(columnPart))
         {
             // Complex expression: return alias if provided, otherwise null
-            return aliasName != null ? (null, null, aliasName) : null;
+            return aliasName != null ? (null, null, (aliasName, null)) : null;
         }
 
         if (IsFunctionCall(columnPart, out var functionName))
         {
-            // Function: use alias if provided, otherwise function name
+            // Function: extract actual column name from function and set alias
             // functionName is guaranteed to be non-null when IsFunctionCall returns true
-            var columnName = aliasName ?? functionName!;
-            return (null, null, columnName);
+            return (null, null, (functionName!, aliasName));
         }
 
         // Parse qualified column names
@@ -701,7 +704,7 @@ public static partial class SqlInterrogator
     /// <param name="columnPart">The column expression to parse.</param>
     /// <param name="aliasName">The alias name if one was detected.</param>
     /// <returns>
-    /// A tuple with (DatabaseName, TableName, ColumnName) if parsing succeeds;
+    /// A tuple with (DatabaseName, TableName, (ColumnName, Alias)) if parsing succeeds;
     /// otherwise, null.
     /// </returns>
     /// <remarks>
@@ -714,19 +717,20 @@ public static partial class SqlInterrogator
     /// <item>5-part: Server.DB.Schema.Table.Column</item>
     /// </list>
     /// </remarks>
-    private static (string? DatabaseName, string? TableName, string ColumnName)? ParseQualifiedColumnName(
+    private static (string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)? ParseQualifiedColumnName(
         string columnPart,
         string? aliasName)
     {
         // Remove double quotes for processing (SQL Server allows "identifier" syntax)
         var cleanColumnPart = columnPart.Trim().Replace("\"", "");
+
         // Patterns ordered from most specific (5-part) to least specific (1-part)
         var patterns = new[]
         {
             // Five-part: [server].[db].[schema].[table].[column]
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 5),
             // Four-part: [db].[schema].[table].[column] or db.schema.table.column
-            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]$", 4),
+            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 4),
             // Three-part: [db].[table].[column] or db.table.column
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 3),
             // Two-part: [table].[column] or table.column
@@ -746,30 +750,30 @@ public static partial class SqlInterrogator
                     // server.db.schema.table.column
                     // Extract: server (1st) as DB, table (4th), column (5th)
                     5 => (match.Groups[DatabaseGroupIndex].Value,
-                      match.Groups[ColumnGroupIndex].Value,
-                        aliasName ?? match.Groups[FifthPartGroupIndex].Value),
+                        match.Groups[ColumnGroupIndex].Value,
+                        (match.Groups[FifthPartGroupIndex].Value, aliasName)),
 
                     // db.schema.table.column
                     // Extract: db (1st), table (3rd - skip schema), column (4th)
                     4 => (match.Groups[DatabaseGroupIndex].Value,
                         match.Groups[TableGroupIndex].Value,
-                                aliasName ?? match.Groups[ColumnGroupIndex].Value),
+                        (match.Groups[ColumnGroupIndex].Value, aliasName)),
 
                     // Could be db.table.column or schema.table.column
                     // Assume db.table.column format
                     3 => (match.Groups[DatabaseGroupIndex].Value,
-                               match.Groups[SecondaryDatabaseGroupIndex].Value,
-                      aliasName ?? match.Groups[TableGroupIndex].Value),
+                        match.Groups[SecondaryDatabaseGroupIndex].Value,
+                        (match.Groups[TableGroupIndex].Value, aliasName)),
 
                     // table.column (most common qualified format)
                     2 => (null,
-                   match.Groups[DatabaseGroupIndex].Value,
-                    aliasName ?? match.Groups[SecondaryDatabaseGroupIndex].Value),
+                        match.Groups[DatabaseGroupIndex].Value,
+                        (match.Groups[SecondaryDatabaseGroupIndex].Value, aliasName)),
 
                     // Simple column name (no qualification)
                     1 => (null,
-                  null,
-                       aliasName ?? match.Groups[DatabaseGroupIndex].Value),
+                        null,
+                        (match.Groups[DatabaseGroupIndex].Value, aliasName)),
 
                     _ => null
                 };
