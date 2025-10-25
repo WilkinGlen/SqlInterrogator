@@ -349,7 +349,6 @@ public static partial class SqlInterrogator
                     if (match.Groups[i].Success && !string.IsNullOrWhiteSpace(match.Groups[i].Value))
                     {
                         var tableName = match.Groups[i].Value;
-
                         // Filter out table-valued functions (names containing parentheses)
                         // Check the original matched text for parentheses after the table name
                         var matchedText = match.Value;
@@ -420,7 +419,6 @@ public static partial class SqlInterrogator
     public static List<(string? DatabaseName, string? TableName, string ColumnName)> ExtractColumnDetailsFromSelectClauseInSql(string sql)
     {
         var columns = new List<(string? DatabaseName, string? TableName, string ColumnName)>();
-
         if (string.IsNullOrWhiteSpace(sql))
         {
             return columns;
@@ -430,7 +428,6 @@ public static partial class SqlInterrogator
         sql = RemoveComments(sql);
         sql = RemoveCTEs(sql);
         sql = RemoveUseStatements(sql);
-
         // Only process SELECT statements
         if (!IgnoreCaseRegex().IsMatch(sql))
         {
@@ -448,7 +445,6 @@ public static partial class SqlInterrogator
 
         // Remove DISTINCT, ALL, TOP keywords as they don't affect column extraction
         selectClause = DistinctTopRegex().Replace(selectClause, "");
-
         // Handle SELECT * as a special case
         if (SelectStarRegex().IsMatch(selectClause.Trim()))
         {
@@ -458,7 +454,6 @@ public static partial class SqlInterrogator
 
         // Split by comma, but not within parentheses (for functions like CONCAT, SUBSTRING, etc.)
         var columnExpressions = SplitByCommaRespectingParentheses(selectClause);
-
         // Process each column expression
         foreach (var expr in columnExpressions)
         {
@@ -555,7 +550,6 @@ public static partial class SqlInterrogator
     {
         // Extract alias (explicit or implicit) and get the column part
         var (columnPart, aliasName) = ExtractAlias(expression);
-
         // Check for various expression types
         if (IsLiteral(columnPart))
         {
@@ -596,7 +590,6 @@ public static partial class SqlInterrogator
     {
         // Step 1: Check for explicit alias using AS keyword
         var aliasMatch = ExplicitAliasRegex().Match(expression);
-
         if (aliasMatch.Success)
         {
             // Found explicit alias: "expression AS alias"
@@ -659,7 +652,6 @@ public static partial class SqlInterrogator
         // Normalize whitespace for better pattern matching
         var normalizedPart = WhitespaceNormalizationRegex().Replace(columnPart.Trim(), " ");
         var upperPart = normalizedPart.ToUpperInvariant();
-
         // Check for CASE expressions (handles multiline)
         if (upperPart.StartsWith("CASE") || upperPart.Contains(" CASE ") || upperPart.Contains(" WHEN "))
         {
@@ -688,7 +680,6 @@ public static partial class SqlInterrogator
     private static bool IsFunctionCall(string columnPart, out string? functionName)
     {
         functionName = null;
-
         if (!columnPart.Contains('('))
         {
             return false;
@@ -729,7 +720,6 @@ public static partial class SqlInterrogator
     {
         // Remove double quotes for processing (SQL Server allows "identifier" syntax)
         var cleanColumnPart = columnPart.Trim().Replace("\"", "");
-
         // Patterns ordered from most specific (5-part) to least specific (1-part)
         var patterns = new[]
         {
