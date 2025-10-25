@@ -295,4 +295,71 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result[0].ColumnName.Should().Be("Name");
         _ = result[1].ColumnName.Should().Be("Email");
     }
+
+    #region Window Function Tests
+
+    [Fact]
+    public void HandleRowNumberFunction()
+    {
+        var sql = @"SELECT 
+                    ROW_NUMBER() OVER(ORDER BY u.CreatedDate) AS RowNum,
+                    u.Name
+                    FROM Users u";
+
+        var result = SqlInterrogatorService.SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().HaveCount(2);
+        _ = result[0].ColumnName.Should().Be("RowNum");
+        _ = result[1].ColumnName.Should().Be("Name");
+    }
+
+    [Fact]
+    public void HandleLeadLagFunctions()
+    {
+        var sql = @"SELECT 
+               LEAD(u.Salary) OVER(ORDER BY u.HireDate) AS NextSalary,
+               LAG(u.Salary) OVER(ORDER BY u.HireDate) AS PrevSalary,
+               u.Name
+               FROM Users u";
+
+        var result = SqlInterrogatorService.SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().HaveCount(3);
+        _ = result[0].ColumnName.Should().Be("NextSalary");
+        _ = result[1].ColumnName.Should().Be("PrevSalary");
+        _ = result[2].ColumnName.Should().Be("Name");
+    }
+
+    [Fact]
+    public void HandleFirstValueLastValue()
+    {
+        var sql = @"SELECT 
+                    FIRST_VALUE(u.Name) OVER(PARTITION BY u.Department ORDER BY u.Salary DESC) AS HighestPaid,
+                    LAST_VALUE(u.Name) OVER(PARTITION BY u.Department ORDER BY u.Salary DESC) AS LowestPaid
+                    FROM Users u";
+
+        var result = SqlInterrogatorService.SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().HaveCount(2);
+        _ = result[0].ColumnName.Should().Be("HighestPaid");
+        _ = result[1].ColumnName.Should().Be("LowestPaid");
+    }
+
+    #endregion
+
+    #region Unicode Tests
+
+    [Fact]
+    public void HandleJapaneseColumnNames()
+    {
+        var sql = "SELECT u.[??] AS Name, u.[???] FROM [????] u";
+
+        var result = SqlInterrogatorService.SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
+
+        _ = result.Should().HaveCount(2);
+        _ = result[0].ColumnName.Should().Be("Name");
+        _ = result[1].ColumnName.Should().Be("???");
+    }
+
+    #endregion
 }

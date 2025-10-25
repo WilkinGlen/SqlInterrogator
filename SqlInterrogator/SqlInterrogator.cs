@@ -93,8 +93,8 @@ public static partial class SqlInterrogator
     [GeneratedRegex(@"^\d+$|^'[^']*'$", RegexOptions.IgnoreCase)]
     private static partial Regex LiteralRegex();
 
-    /// <summary>Matches SQL function calls.</summary>
-    [GeneratedRegex(@"(\w+)\s*\(")]
+    /// <summary>Matches SQL function calls including window functions and common SQL functions.</summary>
+    [GeneratedRegex(@"(ROW_NUMBER|RANK|DENSE_RANK|NTILE|LEAD|LAG|FIRST_VALUE|LAST_VALUE|PERCENT_RANK|CUME_DIST|COUNT|SUM|AVG|MIN|MAX|CAST|CONVERT|COALESCE|ISNULL|CONCAT|SUBSTRING|UPPER|LOWER|LTRIM|RTRIM|LEFT|RIGHT|DATEADD|DATEDIFF|DATEPART|GETDATE|\w+)\s*\(", RegexOptions.IgnoreCase)]
     private static partial Regex FunctionRegex();
 
     /// <summary>Matches Common Table Expressions (WITH ... AS (...)).</summary>
@@ -111,44 +111,48 @@ public static partial class SqlInterrogator
 
     // Pattern 1: Bracketed three-part identifier [db].[schema].[table]
     // Example: [MyDB].[dbo].[Users], [DB1].[sys].[tables]
+    // Negative lookahead (?!\.\[) ensures we don't match part of a four-part identifier
     private const string BracketedThreePartPattern =
-        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)";
 
     // Pattern 2: Mixed bracketed/unbracketed [db].schema.table or db.[schema].[table]
     // Example: [MyDB].dbo.Users, MyDB.[dbo].[Users]
     private const string MixedThreePartPattern1 =
-        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE)\s+\[([^\]]+)\]\.(?:\[?[^\]\.\s]+\]?)\.(?:\[?[^\]\.\s\(]+\]?)";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+\[([^\]]+)\]\.(?:\[?[^\]\.\s]+\]?)\.(?:\[?[^\]\.\s\(]+\]?)(?!\.)";
     private const string MixedThreePartPattern2 =
-        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE)\s+(\w+)\.\[([^\]]+)\]\.\[([^\]]+)\]";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)";
 
     // Pattern 3: Unbracketed three-part identifier db.schema.table
     // Example: MyDB.dbo.Users, Database1.sys.objects
+    // Negative lookahead (?!\.) ensures we don't match part of a four-part identifier
     private const string UnbracketedThreePartPattern =
-        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE)\s+(\w+)\.(\w+)\.(\w+)";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.(\w+)\.(\w+)(?!\.)";
+
 
     // Pattern 4: Double-quoted identifiers "db"."schema"."table"
     // Example: "MyDB"."dbo"."Users"
     private const string DoubleQuotedThreePartPattern =
-        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""";
 
     // Pattern 5: Mixed quoted and bracketed "db".[schema].[table]
     // Example: "MyDB".[dbo].[Users], "MyDB".dbo.Users
     private const string MixedQuotedBracketedPattern =
-        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE)\s+""([^""]+)""\.(?:\[?[^\]\.\s]+\]?)\.(?:\[?[^\]\.\s\(]+\]?)";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+""([^""]+)""\.(?:\[?[^\]\.\s]+\]?)\.(?:\[?[^\]\.\s\(]+\]?)";
 
     // Pattern 6: Server.database.schema.table (four-part names) - extract database (2nd part)
-    // Example: [Server1].[MyDB].[dbo].[Users], Server1.MyDB.dbo.Users
+    // Example: [Server1].[MyDB].[dbo].[Users], Server1.MyDB.dbo.Users  
+    // Uses non-capturing group for server, captures database
     private const string BracketedFourPartPattern =
-        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE)\s+(?:\[?[^\]\.\s]+\]?)\.\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+\[(?:[^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]";
     private const string UnbracketedFourPartPattern =
-      @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE)\s+(?:\w+)\.(\w+)\.(\w+)\.(\w+)";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(?:\w+)\.(\w+)\.(\w+)\.(\w+)(?!\.)";
 
     // Pattern 7: Handle table hints WITH (NOLOCK) etc
     // Example: [MyDB].[dbo].[Users] WITH (NOLOCK), MyDB.dbo.Users AS u
     private const string BracketedWithHintPattern =
-        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)";
     private const string UnbracketedWithHintPattern =
-        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)";
 
     #endregion
 
@@ -197,18 +201,28 @@ public static partial class SqlInterrogator
         // Pattern array ordered from most specific to least specific
         // Each pattern captures database names from different identifier formats
         var patterns = new[]
- {
-         BracketedThreePartPattern,
+        {
+            // Four-part patterns MUST come first to match before three-part patterns
+            // Pattern 6: Server.database.schema.table (four-part names) - extract database (2nd part)
+            BracketedFourPartPattern,
+            UnbracketedFourPartPattern,
+            
+            // Three-part patterns
+            // Pattern 1: Bracketed three-part identifier [db].[schema].[table]
+            BracketedThreePartPattern,
+            // Pattern 2: Mixed bracketed/unbracketed  
             MixedThreePartPattern1,
             MixedThreePartPattern2,
+            // Pattern 3: Unbracketed three-part identifier db.schema.table
             UnbracketedThreePartPattern,
-     DoubleQuotedThreePartPattern,
-    MixedQuotedBracketedPattern,
-        BracketedFourPartPattern,
-         UnbracketedFourPartPattern,
+            // Pattern 4: Double-quoted identifiers "db"."schema"."table"
+            DoubleQuotedThreePartPattern,
+            // Pattern 5: Mixed quoted and bracketed "db".[schema].[table]
+            MixedQuotedBracketedPattern,
+            // Pattern 7: Handle table hints WITH (NOLOCK) etc
             BracketedWithHintPattern,
-  UnbracketedWithHintPattern,
-  };
+            UnbracketedWithHintPattern,
+        };
 
         // Iterate through patterns and extract database names from matches
         foreach (var pattern in patterns)
@@ -216,6 +230,26 @@ public static partial class SqlInterrogator
             var matches = Regex.Matches(sql, pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
             foreach (Match match in matches)
             {
+                // Skip if this looks like part of a four-part identifier
+                // Check if there's another identifier before our match
+                var matchStart = match.Index;
+                if (matchStart > 0)
+                {
+                    // Look backwards for a potential fourth part
+                    var beforeMatch = sql.Substring(Math.Max(0, matchStart - 50), Math.Min(50, matchStart));
+                    // If we find a pattern like "word." or "[word]." right before FROM/JOIN/etc, skip
+                    if (Regex.IsMatch(beforeMatch, @"(\w+|\[[^\]]+\])\.\s*$"))
+                    {
+                        // This might be part of a four-part identifier, but only skip if the current match is three-part
+                        // Count dots in the matched pattern to determine if it's three-part
+                        var dotCount = match.Value.Count(c => c == '.');
+                        if (dotCount == 2) // Three-part identifier (db.schema.table has 2 dots)
+                        {
+                            continue; // Skip this match as it's likely part of a four-part
+                        }
+                    }
+                }
+
                 var databaseName = ExtractDatabaseNameFromMatch(match);
                 if (!string.IsNullOrWhiteSpace(databaseName))
                 {
@@ -303,7 +337,7 @@ public static partial class SqlInterrogator
             // Pattern 8: Double-quoted identifiers
             @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
             @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
-            @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""(?!\.)(?!\."")",
+            @"(?:FROM|JOIN)\s+""([^""]+)""\.""""([^""]+)""(?!\.)(?!\."")",
             @"(?:FROM|JOIN)\s+""([^""]+)""(?!\."")",
 
             // Pattern 9: Single bracketed table name [table]
@@ -329,7 +363,23 @@ public static partial class SqlInterrogator
                 {
                     if (match.Groups[i].Success && !string.IsNullOrWhiteSpace(match.Groups[i].Value))
                     {
-                        return match.Groups[i].Value;
+                        var tableName = match.Groups[i].Value;
+
+                        // Filter out table-valued functions (names containing parentheses)
+                        // Check the original matched text for parentheses after the table name
+                        var matchedText = match.Value;
+                        var tableNameIndex = matchedText.LastIndexOf(tableName, StringComparison.OrdinalIgnoreCase);
+                        if (tableNameIndex >= 0)
+                        {
+                            var afterTableName = matchedText[(tableNameIndex + tableName.Length)..].TrimStart();
+                            if (afterTableName.StartsWith('('))
+                            {
+                                // This is a table-valued function, skip it
+                                continue;
+                            }
+                        }
+
+                        return tableName;
                     }
                 }
             }
@@ -513,11 +563,11 @@ public static partial class SqlInterrogator
     /// <item>Simple: "Name" → (null, null, "Name")</item>
     /// <item>Qualified: "Table.Column" → (null, "Table", "Column")</item>
     /// <item>Fully qualified: "DB.Schema.Table.Column" → ("DB", "Table", "Column")</item>
-    /// <item>With explicit alias: "Column AS Alias" → ColumnName = "Alias"</item>
-    /// <item>With implicit alias: "Table.Column Alias" → ColumnName = "Alias"</item>
-    /// <item>Functions: "COUNT(*)" → (null, null, "COUNT")</item>
-    /// <item>Functions with alias: "COUNT(*) AS Total" → (null, null, "Total")</item>
-    /// <item>Subqueries: "(SELECT ...) AS SubQ" → ColumnName = "SubQ"</item>
+    /// <item>Explicit aliases: "Name AS FullName" → ColumnName = "FullName"</item>
+    /// <item>Implicit aliases: "Table.Column UserName" → ColumnName = "UserName"</item>
+    /// <item>Functions: "COUNT(*) AS Total" → (null, null, "Total")</item>
+    /// <item>DISTINCT and TOP keywords are automatically removed</item>
+    /// <item>Comments, CTEs, and USE statements are automatically removed</item>
     /// </list>
     /// </remarks>
     private static (string? DatabaseName, string? TableName, string ColumnName)? ExtractColumnDetailFromExpression(string expression)
@@ -534,6 +584,13 @@ public static partial class SqlInterrogator
         if (IsSubquery(columnPart))
         {
             // Subquery: use alias if provided, otherwise return null
+            return aliasName != null ? (null, null, aliasName) : null;
+        }
+
+        // Check for complex expressions (CASE, arithmetic, etc.)
+        if (IsComplexExpression(columnPart))
+        {
+            // Complex expression: return alias if provided, otherwise null
             return aliasName != null ? (null, null, aliasName) : null;
         }
 
@@ -612,6 +669,36 @@ public static partial class SqlInterrogator
     }
 
     /// <summary>
+    /// Determines whether a column part is a complex expression (CASE, arithmetic, etc.).
+    /// </summary>
+    /// <param name="columnPart">The column expression to check.</param>
+    /// <returns>True if the expression is a complex expression; otherwise, false.</returns>
+    private static bool IsComplexExpression(string columnPart)
+    {
+        // Normalize whitespace for better pattern matching
+        var normalizedPart = Regex.Replace(columnPart.Trim(), @"\s+", " ");
+        var upperPart = normalizedPart.ToUpperInvariant();
+
+        // Check for CASE expressions (handles multiline)
+        if (upperPart.StartsWith("CASE") || upperPart.Contains(" CASE ") || upperPart.Contains(" WHEN "))
+        {
+            return true;
+        }
+
+        // Check for arithmetic operators (+-*/) but only if there's NO qualified column
+        // If it has a table.column reference (contains dot before the operator), it's OK
+        var hasDot = upperPart.Contains('.');
+        var hasArithmetic = 
+            upperPart.Contains(" + ") || 
+            upperPart.Contains(" - ") ||
+            upperPart.Contains(" * ") ||
+            upperPart.Contains(" / ");
+
+        // Only treat as complex if it has arithmetic BUT no table qualification
+        return hasArithmetic && !hasDot;
+    }
+
+    /// <summary>
     /// Determines whether a column part is a function call and extracts the function name.
     /// </summary>
     /// <param name="columnPart">The column expression to check.</param>
@@ -665,20 +752,20 @@ public static partial class SqlInterrogator
         // Patterns ordered from most specific (5-part) to least specific (1-part)
         var patterns = new[]
         {
-         // Five-part: [server].[db].[schema].[table].[column]
-  (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 5),
+            // Five-part: [server].[db].[schema].[table].[column]
+            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 5),
  
             // Four-part: [db].[schema].[table].[column] or db.schema.table.column
-  (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 4),
+            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 4),
 
-     // Three-part: [db].[table].[column] or db.table.column
- (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 3),
+            // Three-part: [db].[table].[column] or db.table.column
+            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 3),
 
-     // Two-part: [table].[column] or table.column
-      (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 2),
+            // Two-part: [table].[column] or table.column
+            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 2),
 
-        // Single part: [column] or column
-   (@"^\[?([^\]\.]+)\]?$", 1),
+            // Single part: [column] or column
+            (@"^\[?([^\]\.]+)\]?$", 1),
         };
 
         // Try each pattern to determine the column's qualification level
@@ -693,19 +780,19 @@ public static partial class SqlInterrogator
                     // Extract: server (1st) as DB, table (4th), column (5th)
                     5 => (match.Groups[DatabaseGroupIndex].Value,
                           match.Groups[ColumnGroupIndex].Value,
-                         aliasName ?? match.Groups[FifthPartGroupIndex].Value),
+                          aliasName ?? match.Groups[FifthPartGroupIndex].Value),
 
                     // db.schema.table.column
                     // Extract: db (1st), table (3rd - skip schema), column (4th)
                     4 => (match.Groups[DatabaseGroupIndex].Value,
-                        match.Groups[TableGroupIndex].Value,
-                         aliasName ?? match.Groups[ColumnGroupIndex].Value),
+                          match.Groups[TableGroupIndex].Value,
+                          aliasName ?? match.Groups[ColumnGroupIndex].Value),
 
                     // Could be db.table.column or schema.table.column
                     // Assume db.table.column format
                     3 => (match.Groups[DatabaseGroupIndex].Value,
-                    match.Groups[SecondaryDatabaseGroupIndex].Value,
-                      aliasName ?? match.Groups[TableGroupIndex].Value),
+                          match.Groups[SecondaryDatabaseGroupIndex].Value,
+                          aliasName ?? match.Groups[TableGroupIndex].Value),
 
                     // table.column (most common qualified format)
                     2 => (null,
@@ -714,7 +801,7 @@ public static partial class SqlInterrogator
 
                     // Simple column name (no qualification)
                     1 => (null,
-                null,
+                          null,
                           aliasName ?? match.Groups[DatabaseGroupIndex].Value),
 
                     _ => null
@@ -740,12 +827,12 @@ public static partial class SqlInterrogator
     private static string ExtractDatabaseNameFromMatch(Match match)
     {
         return match.Groups[DatabaseGroupIndex].Success &&
-         !string.IsNullOrWhiteSpace(match.Groups[DatabaseGroupIndex].Value)
-     ? match.Groups[DatabaseGroupIndex].Value
-     : match.Groups[SecondaryDatabaseGroupIndex].Success &&
-           !string.IsNullOrWhiteSpace(match.Groups[SecondaryDatabaseGroupIndex].Value)
-         ? match.Groups[SecondaryDatabaseGroupIndex].Value
-      : string.Empty;
+            !string.IsNullOrWhiteSpace(match.Groups[DatabaseGroupIndex].Value)
+                ? match.Groups[DatabaseGroupIndex].Value
+                : match.Groups[SecondaryDatabaseGroupIndex].Success &&
+                !string.IsNullOrWhiteSpace(match.Groups[SecondaryDatabaseGroupIndex].Value)
+                    ? match.Groups[SecondaryDatabaseGroupIndex].Value
+                    : string.Empty;
     }
 
     /// <summary>
