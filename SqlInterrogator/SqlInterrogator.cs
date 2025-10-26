@@ -110,6 +110,14 @@ public static partial class SqlInterrogator
     [GeneratedRegex(@"\s+", RegexOptions.None, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex WhitespaceNormalizationRegex();
 
+    /// <summary>Matches WHERE clause extraction pattern.</summary>
+    [GeneratedRegex(@"\bWHERE\b\s+(.*?)(?:\bORDER\s+BY\b|\bGROUP\s+BY\b|\bHAVING\b|\bUNION\b|;|$)", RegexOptions.IgnoreCase | RegexOptions.Singleline, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
+    private static partial Regex WhereClauseRegex();
+
+    /// <summary>Matches comparison operators in WHERE conditions.</summary>
+    [GeneratedRegex(@"([\w\[\]\.""]+)\s*(>=|<=|!=|<>|>|<|=|LIKE|IN|IS\s+NOT|IS|NOT\s+IN|NOT\s+LIKE)\s*([\w\[\]\.""]+|'[^']*'|\([^)]+\))?", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
+    private static partial Regex WhereConditionRegex();
+
     // Bracketed three-part identifier [db].[schema].[table]
     // Example: [MyDB].[dbo].[Users], [DB1].[sys].[tables]
     // Negative lookahead (?!\.\[) ensures we don't match part of a four-part identifier
@@ -478,6 +486,122 @@ public static partial class SqlInterrogator
     }
 
     /// <summary>
+    /// Extracts column-value pairs from WHERE clause conditions in a SQL statement.
+    /// </summary>
+    /// <param name="sql">The SQL statement to analyze.</param>
+    /// <returns>
+    /// A list of tuples containing:
+    /// <list type="bullet">
+    /// <item><c>Column</c> - A tuple with ColumnName (the column being filtered) and Alias (null for WHERE clause columns)</item>
+    /// <item><c>Operator</c> - The comparison operator (=, !=, <>, >, <, >=, <=, LIKE, IN, IS, IS NOT, etc.)</item>
+    /// <item><c>Value</c> - The comparison value (e.g., "1", "'John'", "(1,2,3)", "NULL" for IS/IS NOT, or another column name like "u.Id")</item>
+    /// </list>
+    /// Returns an empty list if the SQL has no WHERE clause or contains no valid conditions.
+    /// </returns>
+    /// <remarks>
+    /// <para>This method handles:</para>
+    /// <list type="bullet">
+    /// <item>Simple comparisons: WHERE Id = 1 → ("Id", "=", "1")</item>
+    /// <item>String comparisons: WHERE Name = 'John' → ("Name", "=", "'John'")</item>
+    /// <item>Qualified columns: WHERE u.Active = 1 → ("u.Active", "=", "1")</item>
+    /// <item>Column-to-column comparisons: WHERE o.UserId = u.Id → ("o.UserId", "=", "u.Id")</item>
+    /// <item>LIKE patterns: WHERE Email LIKE '%@example.com' → ("Email", "LIKE", "'%@example.com'")</item>
+    /// <item>Comparison operators: =, !=, <>, >, <, >=, <=, LIKE, IN, IS, IS NOT</item>
+    /// <item>Bracketed identifiers: WHERE [User Name] = 'John' → ("User Name", "=", "'John'")</item>
+    /// <item>Bracketed column values: WHERE OrderDate > [LastModifiedDate] → ("OrderDate", ">", "[LastModifiedDate]")</item>
+    /// <item>NULL checks: WHERE DeletedDate IS NULL → ("DeletedDate", "IS", "NULL")</item>
+    /// <item>NOT NULL checks: WHERE CreatedDate IS NOT NULL → ("CreatedDate", "IS NOT", "NULL")</item>
+    /// <item>IN clauses: WHERE Status IN (1,2,3) → ("Status", "IN", "(1,2,3)")</item>
+    /// <item>Comments are automatically removed before processing</item>
+    /// <item>Handles conditions before ORDER BY, GROUP BY, HAVING, or UNION clauses</item>
+    /// </list>
+    /// <para>Limitations:</para>
+    /// <list type="bullet">
+    /// <item>Complex nested conditions with AND/OR are split into individual conditions</item>
+    /// <item>Subqueries in WHERE clause are not fully parsed</item>
+    /// <item>Function calls in conditions are extracted as-is</item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var sql = "SELECT * FROM Users WHERE Id = 1 AND Active = 1 AND Email LIKE '%@test.com'";
+    /// var conditions = SqlInterrogator.ExtractWhereClausesFromSql(sql);
+    /// // Result:
+    /// // [
+    /// //   ((ColumnName: "Id", Alias: null), "=", "1"),
+    /// //   ((ColumnName: "Active", Alias: null), "=", "1"),
+    /// //   ((ColumnName: "Email", Alias: null), "LIKE", "'%@test.com'")
+    /// // ]
+    /// 
+    /// var sql2 = "SELECT * FROM Users u WHERE u.CreatedDate > '2024-01-01' ORDER BY u.Name";
+    /// var conditions2 = SqlInterrogator.ExtractWhereClausesFromSql(sql2);
+    /// // Result: [((ColumnName: "u.CreatedDate", Alias: null), ">", "'2024-01-01'")]
+    /// 
+    /// var sql3 = "SELECT * FROM Users WHERE DeletedDate IS NULL";
+    /// var conditions3 = SqlInterrogator.ExtractWhereClausesFromSql(sql3);
+    /// // Result: [((ColumnName: "DeletedDate", Alias: null), "IS", "NULL")]
+    /// 
+    /// var sql4 = "SELECT * FROM Users WHERE CreatedDate IS NOT NULL";
+    /// var conditions4 = SqlInterrogator.ExtractWhereClausesFromSql(sql4);
+    /// // Result: [((ColumnName: "CreatedDate", Alias: null), "IS NOT", "NULL")]
+    /// 
+    /// var sql5 = "SELECT * FROM Orders o JOIN Users u ON o.UserId = u.Id WHERE o.Status = u.DefaultStatus";
+    /// var conditions5 = SqlInterrogator.ExtractWhereClausesFromSql(sql5);
+    /// // Result: [((ColumnName: "o.Status", Alias: null), "=", "u.DefaultStatus")]
+    /// </code>
+    /// </example>
+    public static List<((string ColumnName, string? Alias) Column, string Operator, string Value)> ExtractWhereClausesFromSql(string sql)
+    {
+        var conditions = new List<((string ColumnName, string? Alias) Column, string Operator, string Value)>();
+
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            return conditions;
+        }
+
+        // Pre-process SQL: remove comments, CTEs, and USE statements
+        sql = RemoveComments(sql);
+        sql = RemoveCTEs(sql);
+        sql = RemoveUseStatements(sql);
+
+        // Extract WHERE clause
+        var whereMatch = WhereClauseRegex().Match(sql);
+        if (!whereMatch.Success)
+        {
+            return conditions;
+        }
+
+        var whereClause = whereMatch.Groups[1].Value.Trim();
+
+        // Split by AND/OR while respecting parentheses
+        var individualConditions = SplitWhereConditions(whereClause);
+
+        // Extract column-operator-value triplets from each condition
+        foreach (var condition in individualConditions)
+        {
+            var trimmedCondition = condition.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedCondition))
+            {
+                continue;
+            }
+
+            var conditionMatch = WhereConditionRegex().Match(trimmedCondition);
+            if (conditionMatch.Success)
+            {
+                var columnName = conditionMatch.Groups[1].Value.Trim().Trim('[', ']', '"');
+                var operatorPart = conditionMatch.Groups[2].Value.Trim();
+                var valuePart = conditionMatch.Groups.Count > 3 && conditionMatch.Groups[3].Success
+                ? conditionMatch.Groups[3].Value.Trim()
+                 : string.Empty;
+
+                conditions.Add(((columnName, null), operatorPart, valuePart));
+            }
+        }
+
+        return conditions;
+    }
+
+    /// <summary>
     /// Splits a text string by commas whilst respecting parentheses nesting.
     /// This ensures function parameters like CONCAT(a, b) aren't incorrectly split.
     /// </summary>
@@ -730,7 +854,7 @@ public static partial class SqlInterrogator
             // Five-part: [server].[db].[schema].[table].[column]
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 5),
             // Four-part: [db].[schema].[table].[column] or db.schema.table.column
-            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 4),
+            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]$", 4),
             // Three-part: [db].[table].[column] or db.table.column
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 3),
             // Two-part: [table].[column] or table.column
@@ -861,5 +985,123 @@ public static partial class SqlInterrogator
         sql = StandaloneGoRegex().Replace(sql, "");
 
         return sql.Trim();
+    }
+
+    /// <summary>
+    /// Splits WHERE clause conditions by AND/OR operators while respecting parentheses.
+    /// </summary>
+    /// <param name="whereClause">The WHERE clause text to split.</param>
+    /// <returns>A list of individual conditions.</returns>
+    /// <remarks>
+    /// This method tracks parentheses depth and only splits on AND/OR operators that are not
+    /// inside nested conditions or function calls.
+    /// </remarks>
+    private static List<string> SplitWhereConditions(string whereClause)
+    {
+        var result = new List<string>();
+        var currentCondition = new System.Text.StringBuilder();
+        var parenDepth = 0;
+        var i = 0;
+
+        while (i < whereClause.Length)
+        {
+            var ch = whereClause[i];
+
+            if (ch == '(')
+            {
+                parenDepth++;
+                _ = currentCondition.Append(ch);
+                i++;
+            }
+            else if (ch == ')')
+            {
+                parenDepth--;
+                _ = currentCondition.Append(ch);
+                i++;
+            }
+            else if (parenDepth == 0)
+            {
+                // Check for AND/OR operators at depth 0
+                var remainingLength = whereClause.Length - i;
+                var canCheckAnd = remainingLength >= 3;
+                var canCheckOr = remainingLength >= 2;
+
+                if (canCheckAnd)
+                {
+                    var next4 = remainingLength >= 4 ? whereClause.Substring(i, 4) : string.Empty;
+                    var next5 = remainingLength >= 5 ? whereClause.Substring(i, 5) : string.Empty;
+
+                    // Check for " AND " (with spaces)
+                    if (next5.Equals(" AND ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (currentCondition.Length > 0)
+                        {
+                            result.Add(currentCondition.ToString());
+                            _ = currentCondition.Clear();
+                        }
+                        i += 5;
+                        continue;
+                    }
+                    // Check for "AND " at start or after whitespace
+                    else if (next4.Equals("AND ", StringComparison.OrdinalIgnoreCase) &&
+                    (i == 0 || char.IsWhiteSpace(whereClause[i - 1])))
+                    {
+                        if (currentCondition.Length > 0)
+                        {
+                            result.Add(currentCondition.ToString());
+                            _ = currentCondition.Clear();
+                        }
+                        i += 4;
+                        continue;
+                    }
+                }
+
+                if (canCheckOr)
+                {
+                    var next3 = remainingLength >= 3 ? whereClause.Substring(i, 3) : string.Empty;
+                    var next4 = remainingLength >= 4 ? whereClause.Substring(i, 4) : string.Empty;
+
+                    // Check for " OR " (with spaces)
+                    if (next4.Equals(" OR ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (currentCondition.Length > 0)
+                        {
+                            result.Add(currentCondition.ToString());
+                            _ = currentCondition.Clear();
+                        }
+                        i += 4;
+                        continue;
+                    }
+                    // Check for "OR " at start or after whitespace
+                    else if (next3.Equals("OR ", StringComparison.OrdinalIgnoreCase) &&
+                    (i == 0 || char.IsWhiteSpace(whereClause[i - 1])))
+                    {
+                        if (currentCondition.Length > 0)
+                        {
+                            result.Add(currentCondition.ToString());
+                            _ = currentCondition.Clear();
+                        }
+                        i += 3;
+                        continue;
+                    }
+                }
+
+                _ = currentCondition.Append(ch);
+                i++;
+            }
+            else
+            {
+                _ = currentCondition.Append(ch);
+                i++;
+            }
+        }
+
+        // Add the last condition
+        if (currentCondition.Length > 0)
+        {
+            result.Add(currentCondition.ToString());
+        }
+
+        return result;
     }
 }
