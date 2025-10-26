@@ -121,7 +121,7 @@ public static partial class SqlInterrogator
     // Example: MyDB.dbo.Users, Database1.sys.objects
     // Negative lookahead (?!\.) ensures we don't match part of a four-part identifier
     private const string UnbracketedThreePartPattern =
-@"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.(\w+)\.(\w+)(?!\.)";
+        @"(?:FROM|JOIN|INTO|UPDATE|TABLE|MERGE|USING)\s+(\w+)\.(\w+)\.(\w+)(?!\.)";
 
     // Double-quoted identifiers "db"."schema"."table"
     // Example: "MyDB"."dbo"."Users"

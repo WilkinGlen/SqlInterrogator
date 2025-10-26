@@ -502,8 +502,8 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
     }
 
     [Fact]
-  public void SkipStringLiterals()
-  {
+    public void SkipStringLiterals()
+    {
         var sql = "SELECT 'Constant', Name FROM Users";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
@@ -596,7 +596,7 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result[0].Column.Alias.Should().Be("DeliveryDate");
         _ = result[1].Column.ColumnName.Should().Be("DATEDIFF");
         _ = result[1].Column.Alias.Should().Be("DaysAgo");
-  }
+    }
 
     [Fact]
     public void HandleFivePartIdentifier()
@@ -623,7 +623,7 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result[1].Column.ColumnName.Should().Be("Email");
     }
 
-  [Fact]
+    [Fact]
     public void HandleTopWithPercent()
     {
         var sql = "SELECT TOP 25 PERCENT Name FROM Users";
@@ -693,9 +693,9 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result[0].Column.Alias.Should().Be("Full Name");
         _ = result[0].Column.ColumnName.Should().Be("Name");
         _ = result[1].Column.ColumnName.Should().Be("Email");
-}
+    }
 
- [Fact]
+    [Fact]
     public void HandleConvertFunction()
     {
         var sql = "SELECT CONVERT(VARCHAR(10), OrderDate, 101) AS FormattedDate FROM Orders";
@@ -709,7 +709,7 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
 
     [Fact]
     public void HandleIsNullFunction()
-{
+    {
         var sql = "SELECT ISNULL(MiddleName, 'N/A') AS MiddleName FROM Users";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
@@ -721,7 +721,7 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
 
     [Fact]
     public void HandleSubstringFunction()
-{
+    {
         var sql = "SELECT SUBSTRING(Name, 1, 3) AS NamePrefix FROM Users";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
@@ -734,7 +734,7 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
     [Fact]
     public void HandlePercentRankFunction()
     {
-     var sql = "SELECT PERCENT_RANK() OVER(ORDER BY Salary) AS PercentRank FROM Employees";
+        var sql = "SELECT PERCENT_RANK() OVER(ORDER BY Salary) AS PercentRank FROM Employees";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
@@ -769,7 +769,7 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
 
     [Fact]
     public void HandleAvgWindowFunction()
-{
+    {
         var sql = "SELECT AVG(Price) OVER(ORDER BY Date) AS MovingAverage FROM Products";
 
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
@@ -777,7 +777,7 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result.Should().ContainSingle();
         _ = result[0].Column.ColumnName.Should().Be("AVG");
         _ = result[0].Column.Alias.Should().Be("MovingAverage");
-}
+    }
 
     [Fact]
     public void HandleLeftRightFunctions()
@@ -843,7 +843,7 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         _ = result[0].TableName.Should().Be("u");
         _ = result[1].Column.ColumnName.Should().Be("Email");
         _ = result[1].Column.Alias.Should().Be("E-Mail");
-  }
+    }
 
     [Fact]
     public void HandleExtraWhitespace()

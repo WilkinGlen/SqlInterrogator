@@ -1,7 +1,4 @@
 ﻿namespace SqlInterrogatorService;
-
-using System.Text.RegularExpressions;
-
 /// <summary>
 /// Provides static methods for extracting information from SQL queries, including database names,
 /// table names, and column details. Supports various SQL identifier formats including bracketed,
@@ -60,44 +57,8 @@ public static partial class SqlInterrogator
 
         var databaseNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         sql = RemoveComments(sql);
-
-        // Pattern array ordered from most specific to least specific
-        // Each pattern captures database names from different identifier formats
         var patterns = GetDatabasePatterns();
-
-        // Iterate through patterns and extract database names from matches
-        foreach (var pattern in patterns)
-        {
-            var matches = Regex.Matches(sql, pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
-            foreach (Match match in matches)
-            {
-                // Skip if this looks like part of a four-part identifier
-                // Check if there's another identifier before our match
-                var matchStart = match.Index;
-                if (matchStart > 0)
-                {
-                    // Look backwards for a potential fourth part
-                    var beforeMatch = sql.Substring(Math.Max(0, matchStart - 50), Math.Min(50, matchStart));
-                    // If we find a pattern like "word." or "[word]." right before FROM/JOIN/etc, skip
-                    if (FourPartIdentifierPrefixRegex().IsMatch(beforeMatch))
-                    {
-                        // This might be part of a four-part identifier, but only skip if the current match is three-part
-                        // Count dots in the matched pattern to determine if it's three-part
-                        var dotCount = match.Value.Count(c => c == '.');
-                        if (dotCount == 2) // Three-part identifier (db.schema.table has 2 dots)
-                        {
-                            continue; // Skip this match as it's likely part of a four-part
-                        }
-                    }
-                }
-
-                var databaseName = ExtractDatabaseNameFromMatch(match);
-                if (!string.IsNullOrWhiteSpace(databaseName))
-                {
-                    _ = databaseNames.Add(databaseName);
-                }
-            }
-        }
+        ExtractDatabaseNamesFromPatterns(sql, patterns, databaseNames);
 
         return [.. databaseNames];
     }
@@ -137,10 +98,7 @@ public static partial class SqlInterrogator
             return null;
         }
 
-        // Pre-process SQL: remove comments, CTEs, and USE statements
-        sql = RemoveComments(sql);
-        sql = RemoveCTEs(sql);
-        sql = RemoveUseStatements(sql);
+        sql = PreprocessSql(sql);
 
         // Only process SELECT statements
         if (!IgnoreCaseRegex().IsMatch(sql))
@@ -148,44 +106,8 @@ public static partial class SqlInterrogator
             return null;
         }
 
-        // Patterns ordered from most specific to least specific
-        // This ensures four-part names are matched before three-part, etc.
         var patterns = GetTableNamePatterns();
-
-      // Try each pattern in order until a match is found
-        foreach (var pattern in patterns)
-        {
-       var match = Regex.Match(sql, pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
-  if (match.Success)
-        {
-         // Extract the last non-empty group (the table name)
-       // Groups are ordered: [server].[database].[schema].[table], so we want the last one
-      for (var i = match.Groups.Count - 1; i >= 1; i--)
-       {
-          if (match.Groups[i].Success && !string.IsNullOrWhiteSpace(match.Groups[i].Value))
-       {
-    var tableName = match.Groups[i].Value;
-            // Filter out table-valued functions (names containing parentheses)
-    // Check the original matched text for parentheses after the table name
-    var matchedText = match.Value;
-       var tableNameIndex = matchedText.LastIndexOf(tableName, StringComparison.OrdinalIgnoreCase);
-   if (tableNameIndex >= 0)
-          {
-        var afterTableName = matchedText[(tableNameIndex + tableName.Length)..].TrimStart();
-          if (afterTableName.StartsWith('('))
-         {
-        // This is a table-valued function, skip it
-              continue;
-        }
-               }
-
-      return tableName;
-     }
-            }
-            }
-        }
-
-        return null;
+        return FindFirstTableNameFromPatterns(sql, patterns);
     }
 
     /// <summary>
@@ -234,63 +156,32 @@ public static partial class SqlInterrogator
     /// </example>
     public static List<(string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)> ExtractColumnDetailsFromSelectClauseInSql(string sql)
     {
-        var columns = new List<(string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)>();
         if (string.IsNullOrWhiteSpace(sql))
         {
-            return columns;
+            return [];
         }
 
-        // Pre-process SQL: remove comments, CTEs, and USE statements
-        sql = RemoveComments(sql);
-        sql = RemoveCTEs(sql);
-        sql = RemoveUseStatements(sql);
+        sql = PreprocessSql(sql);
 
         // Only process SELECT statements
         if (!IgnoreCaseRegex().IsMatch(sql))
         {
-            return columns;
+            return [];
         }
 
-        // Extract the SELECT clause (between SELECT and FROM keywords)
-        var selectClauseMatch = SelectClauseRegex().Match(sql);
-        if (!selectClauseMatch.Success)
+        if (!TryExtractSelectClause(sql, out var selectClause) || selectClause == null)
         {
-            return columns;
+            return [];
         }
-
-        var selectClause = selectClauseMatch.Groups[1].Value;
-
-        // Remove DISTINCT, ALL, TOP keywords as they don't affect column extraction
-        selectClause = DistinctTopRegex().Replace(selectClause, "");
 
         // Handle SELECT * as a special case
         if (SelectStarRegex().IsMatch(selectClause.Trim()))
         {
-            columns.Add((null, null, ("*", null)));
-            return columns;
+            return [(null, null, ("*", null))];
         }
 
-        // Split by comma, but not within parentheses (for functions like CONCAT, SUBSTRING, etc.)
         var columnExpressions = SplitByCommaRespectingParentheses(selectClause);
-
-        // Process each column expression
-        foreach (var expr in columnExpressions)
-        {
-            var trimmedExpr = expr.Trim();
-            if (string.IsNullOrWhiteSpace(trimmedExpr))
-            {
-                continue;
-            }
-
-            // Extract column details from the expression
-            var columnDetail = ExtractColumnDetailFromExpression(trimmedExpr);
-            if (columnDetail.HasValue)
-            {
-                columns.Add(columnDetail.Value);
-            }
-        }
-
-        return columns;
+        return ProcessColumnExpressions(columnExpressions);
     }
 
     /// <summary>
@@ -360,52 +251,22 @@ public static partial class SqlInterrogator
     /// </example>
     public static List<((string ColumnName, string? Alias) Column, string Operator, string Value)> ExtractWhereClausesFromSql(string sql)
     {
-        var conditions = new List<((string ColumnName, string? Alias) Column, string Operator, string Value)>();
-
         if (string.IsNullOrWhiteSpace(sql))
         {
-            return conditions;
+            return [];
         }
 
-        // Pre-process SQL: remove comments, CTEs, and USE statements
-        sql = RemoveComments(sql);
-        sql = RemoveCTEs(sql);
-        sql = RemoveUseStatements(sql);
+        sql = PreprocessSql(sql);
 
-        // Extract WHERE clause
         var whereMatch = WhereClauseRegex().Match(sql);
         if (!whereMatch.Success)
         {
-            return conditions;
+            return [];
         }
 
         var whereClause = whereMatch.Groups[1].Value.Trim();
-
-        // Split by AND/OR while respecting parentheses
         var individualConditions = SplitWhereConditions(whereClause);
 
-        // Extract column-operator-value triplets from each condition
-        foreach (var condition in individualConditions)
-        {
-            var trimmedCondition = condition.Trim();
-            if (string.IsNullOrWhiteSpace(trimmedCondition))
-            {
-                continue;
-            }
-
-            var conditionMatch = WhereConditionRegex().Match(trimmedCondition);
-            if (conditionMatch.Success)
-            {
-                var columnName = conditionMatch.Groups[1].Value.Trim().Trim('[', ']', '"');
-                var operatorPart = conditionMatch.Groups[2].Value.Trim();
-                var valuePart = conditionMatch.Groups.Count > 3 && conditionMatch.Groups[3].Success
-                ? conditionMatch.Groups[3].Value.Trim()
-                 : string.Empty;
-
-                conditions.Add(((columnName, null), operatorPart, valuePart));
-            }
-        }
-
-        return conditions;
+        return ParseWhereConditions(individualConditions);
     }
 }

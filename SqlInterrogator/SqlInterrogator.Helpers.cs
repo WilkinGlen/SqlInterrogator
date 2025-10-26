@@ -10,70 +10,301 @@ public static partial class SqlInterrogator
     /// <summary>
     /// Gets the pattern array for database name extraction, ordered from most specific to least specific.
     /// </summary>
-    private static string[] GetDatabasePatterns() => new[]
+    private static string[] GetDatabasePatterns()
     {
+        return [
         // Four-part patterns MUST come first to match before three-part patterns
         // Server.database.schema.table (four-part names) - extract database (2nd part)
-    BracketedFourPartPattern,
+        BracketedFourPartPattern,
         UnbracketedFourPartPattern,
-   // Three-part patterns
+        // Three-part patterns
         // Bracketed three-part identifier [db].[schema].[table]
         BracketedThreePartPattern,
         // Mixed bracketed/unbracketed
-    MixedThreePartPattern1,
+        MixedThreePartPattern1,
         MixedThreePartPattern2,
         // Unbracketed three-part identifier db.schema.table
         UnbracketedThreePartPattern,
         // Double-quoted identifiers "db"."schema"."table"
- DoubleQuotedThreePartPattern,
+        DoubleQuotedThreePartPattern,
         // Mixed quoted and bracketed "db".[schema].[table]
         MixedQuotedBracketedPattern,
-   // Table hints WITH (NOLOCK) etc
-    BracketedWithHintPattern,
+        // Table hints WITH (NOLOCK) etc
+        BracketedWithHintPattern,
         UnbracketedWithHintPattern,
-    };
+    ];
+    }
 
     /// <summary>
     /// Gets the pattern array for table name extraction, ordered from most specific to least specific.
     /// </summary>
-    private static string[] GetTableNamePatterns() => new[]
+    private static string[] GetTableNamePatterns()
     {
-        // Four-part names - extract table (4th part) - MUST come before three-part patterns
-@"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]",
-        @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\.(\w+)(?!\.\w)",
-        // Bracketed three-part identifier [db].[schema].[table]
-        @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
-        // Mixed bracketed/unbracketed three-part db.schema.table or [db].schema.table
-        @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.([^\]\.\s\[]+)\.([^\]\.\s\(\[]+)(?!\.\w)(?!\.\[)",
-        @"(?:FROM|JOIN)\s+(\w+)\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
-        // Unbracketed three-part identifier db.schema.table
-   @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)(?!\.\w)",
-// Bracketed two-part identifier [schema].[table]
-  @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
-        // Mixed two-part identifier [schema].table
-        @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.(\w+)(?!\.)(?!\s*\()",
-        // Unbracketed two-part identifier schema.table
-        @"(?:FROM|JOIN)\s+(\w+)\.(\w+)(?!\.\w)",
-        // Double-quoted identifiers (MUST come after bracketed patterns)
-        @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
-        @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
-        @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""(?!\."")",
-    @"(?:FROM|JOIN)\s+""([^""]+)""(?!\."")",
-        // Single bracketed table name [table]
-        @"(?:FROM|JOIN)\s+\[([^\]]+)\](?!\.\[)(?!\.)",
-        // Single unbracketed table name
-        @"(?:FROM|JOIN)\s+(\w+)(?!\.\w)(?!\s*\()",
-        // Table hints WITH (NOLOCK) etc
-        @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)",
-        @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)",
-    };
+        return
+        [
+            // Four-part names - extract table (4th part) - MUST come before three-part patterns
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]",
+            @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\.(\w+)(?!\.\w)",
+            // Bracketed three-part identifier [db].[schema].[table]
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
+            // Mixed bracketed/unbracketed three-part db.schema.table or [db].schema.table
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.([^\]\.\s\[]+)\.([^\]\.\s\(\[]+)(?!\.\w)(?!\.\[)",
+            @"(?:FROM|JOIN)\s+(\w+)\.\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
+            // Unbracketed three-part identifier db.schema.table
+            @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)(?!\.\w)",
+            // Bracketed two-part identifier [schema].[table]
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\](?!\.\[)",
+            // Mixed two-part identifier [schema].table
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.(\w+)(?!\.)(?!\s*\()",
+            // Unbracketed two-part identifier schema.table
+            @"(?:FROM|JOIN)\s+(\w+)\.(\w+)(?!\.\w)",
+            // Double-quoted identifiers (MUST come after bracketed patterns)
+            @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
+            @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""\.""([^""]+)""(?!\."")",
+            @"(?:FROM|JOIN)\s+""([^""]+)""\.""([^""]+)""(?!\."")",
+            @"(?:FROM|JOIN)\s+""([^""]+)""(?!\."")",
+            // Single bracketed table name [table]
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\](?!\.\[)(?!\.)",
+            // Single unbracketed table name
+            @"(?:FROM|JOIN)\s+(\w+)(?!\.\w)(?!\s*\()",
+            // Table hints WITH (NOLOCK) etc
+            @"(?:FROM|JOIN)\s+\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]\s+(?:WITH|AS)",
+            @"(?:FROM|JOIN)\s+(\w+)\.(\w+)\.(\w+)\s+(?:WITH|AS)",
+        ];
+    }
 
     /// <summary>
- /// Splits a text string by commas whilst respecting parentheses nesting.
+    /// Preprocesses SQL by removing comments, CTEs, and USE statements.
+    /// </summary>
+    /// <param name="sql">The SQL text to preprocess.</param>
+    /// <returns>The preprocessed SQL text.</returns>
+    private static string PreprocessSql(string sql)
+    {
+        sql = RemoveComments(sql);
+        sql = RemoveCTEs(sql);
+        sql = RemoveUseStatements(sql);
+        return sql;
+    }
+
+    /// <summary>
+    /// Attempts to extract and clean the SELECT clause from a SQL statement.
+    /// </summary>
+    /// <param name="sql">The SQL statement to process.</param>
+    /// <param name="selectClause">The extracted SELECT clause, or null if extraction failed.</param>
+    /// <returns>True if SELECT clause was successfully extracted; otherwise, false.</returns>
+    /// <remarks>
+    /// This method:
+    /// <list type="bullet">
+    /// <item>Extracts text between SELECT and FROM keywords</item>
+    /// <item>Removes DISTINCT, ALL, and TOP keywords</item>
+    /// <item>Returns true even for SELECT * (caller should check for this)</item>
+    /// </list>
+    /// </remarks>
+    private static bool TryExtractSelectClause(string sql, out string? selectClause)
+    {
+        selectClause = null;
+
+        var selectClauseMatch = SelectClauseRegex().Match(sql);
+        if (!selectClauseMatch.Success)
+        {
+            return false;
+        }
+
+        selectClause = selectClauseMatch.Groups[1].Value;
+
+        // Remove DISTINCT, ALL, TOP keywords as they don't affect column extraction
+        selectClause = DistinctTopRegex().Replace(selectClause, "");
+
+        return true;
+    }
+
+    /// <summary>
+    /// Processes a list of column expressions and extracts column details.
+    /// </summary>
+    /// <param name="expressions">The list of column expression strings to process.</param>
+    /// <returns>A list of column details (DatabaseName, TableName, Column).</returns>
+    private static List<(string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)> ProcessColumnExpressions(List<string> expressions)
+    {
+        var columns = new List<(string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)>();
+
+        foreach (var expr in expressions)
+        {
+            var trimmedExpr = expr.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedExpr))
+            {
+                continue;
+            }
+
+            var columnDetail = ExtractColumnDetailFromExpression(trimmedExpr);
+            if (columnDetail.HasValue)
+            {
+                columns.Add(columnDetail.Value);
+            }
+        }
+
+        return columns;
+    }
+
+    /// <summary>
+    /// Parses WHERE clause conditions into column-operator-value triplets.
+    /// </summary>
+    /// <param name="conditions">The list of individual WHERE conditions to parse.</param>
+    /// <returns>A list of parsed conditions with column name, operator, and value.</returns>
+    private static List<((string ColumnName, string? Alias) Column, string Operator, string Value)> ParseWhereConditions(List<string> conditions)
+    {
+        var result = new List<((string ColumnName, string? Alias) Column, string Operator, string Value)>();
+
+        foreach (var condition in conditions)
+        {
+            var trimmedCondition = condition.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedCondition))
+            {
+                continue;
+            }
+
+            var conditionMatch = WhereConditionRegex().Match(trimmedCondition);
+            if (conditionMatch.Success)
+            {
+                var columnName = conditionMatch.Groups[1].Value.Trim().Trim('[', ']', '"');
+                var operatorPart = conditionMatch.Groups[2].Value.Trim();
+                var valuePart = conditionMatch.Groups.Count > 3 && conditionMatch.Groups[3].Success
+                         ? conditionMatch.Groups[3].Value.Trim()
+                              : string.Empty;
+
+                result.Add(((columnName, null), operatorPart, valuePart));
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Extracts database names from SQL using the provided patterns and adds them to the collection.
+    /// </summary>
+    /// <param name="sql">The SQL text to process.</param>
+    /// <param name="patterns">The regex patterns to match against.</param>
+    /// <param name="databaseNames">The HashSet to add found database names to.</param>
+    private static void ExtractDatabaseNamesFromPatterns(string sql, string[] patterns, HashSet<string> databaseNames)
+    {
+        foreach (var pattern in patterns)
+        {
+            var matches = Regex.Matches(sql, pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            foreach (Match match in matches)
+            {
+                if (ShouldSkipAsPartOfFourPartIdentifier(match, sql))
+                {
+                    continue;
+                }
+
+                var databaseName = ExtractDatabaseNameFromMatch(match);
+                if (!string.IsNullOrWhiteSpace(databaseName))
+                {
+                    _ = databaseNames.Add(databaseName);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tries to find and extract the first table name from SQL using the provided patterns.
+    /// </summary>
+    /// <param name="sql">The SQL text to process.</param>
+    /// <param name="patterns">The regex patterns to try in order.</param>
+    /// <returns>The first table name found, or null if no match.</returns>
+    private static string? FindFirstTableNameFromPatterns(string sql, string[] patterns)
+    {
+        foreach (var pattern in patterns)
+        {
+            var match = Regex.Match(sql, pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            if (match.Success)
+            {
+                var tableName = TryExtractTableNameFromMatch(match);
+                if (tableName != null)
+                {
+                    return tableName;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Determines if a match should be skipped because it's part of a four-part identifier.
+    /// </summary>
+    /// <param name="match">The regex match to check.</param>
+    /// <param name="sql">The full SQL string being processed.</param>
+    /// <returns>True if this match should be skipped; otherwise, false.</returns>
+    private static bool ShouldSkipAsPartOfFourPartIdentifier(Match match, string sql)
+    {
+        var matchStart = match.Index;
+        if (matchStart == 0)
+        {
+            return false;
+        }
+
+        // Look backwards for a potential fourth part
+        var beforeMatch = sql.Substring(Math.Max(0, matchStart - 50), Math.Min(50, matchStart));
+
+        // If we find a pattern like "word." or "[word]." right before FROM/JOIN/etc, skip
+        if (!FourPartIdentifierPrefixRegex().IsMatch(beforeMatch))
+        {
+            return false;
+        }
+
+        // This might be part of a four-part identifier, but only skip if the current match is three-part
+        // Count dots in the matched pattern to determine if it's three-part
+        var dotCount = match.Value.Count(c => c == '.');
+
+        // Three-part identifier (db.schema.table has 2 dots)
+        return dotCount == 2;
+    }
+
+    /// <summary>
+    /// Attempts to extract a table name from a regex match, filtering out table-valued functions.
+    /// </summary>
+    /// <param name="match">The regex match containing potential table name groups.</param>
+    /// <returns>The extracted table name, or null if no valid table name found.</returns>
+    private static string? TryExtractTableNameFromMatch(Match match)
+    {
+        // Extract the last non-empty group (the table name)
+        // Groups are ordered: [server].[database].[schema].[table], so we want the last one
+        for (var i = match.Groups.Count - 1; i >= 1; i--)
+        {
+            if (!match.Groups[i].Success || string.IsNullOrWhiteSpace(match.Groups[i].Value))
+            {
+                continue;
+            }
+
+            var tableName = match.Groups[i].Value;
+
+            // Filter out table-valued functions (names containing parentheses)
+            // Check the original matched text for parentheses after the table name
+            var matchedText = match.Value;
+            var tableNameIndex = matchedText.LastIndexOf(tableName, StringComparison.OrdinalIgnoreCase);
+
+            if (tableNameIndex >= 0)
+            {
+                var afterTableName = matchedText[(tableNameIndex + tableName.Length)..].TrimStart();
+                if (afterTableName.StartsWith('('))
+                {
+                    // This is a table-valued function, skip it
+                    continue;
+                }
+            }
+
+            return tableName;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Splits a text string by commas whilst respecting parentheses nesting.
     /// This ensures function parameters like CONCAT(a, b) aren't incorrectly split.
     /// </summary>
     /// <param name="text">The text to split (typically a SELECT clause).</param>
- /// <returns>A list of text segments split by commas at depth 0.</returns>
+    /// <returns>A list of text segments split by commas at depth 0.</returns>
     /// <remarks>
     /// This method tracks parentheses depth and only splits on commas that are not
     /// inside function calls or subqueries.
@@ -158,6 +389,7 @@ public static partial class SqlInterrogator
         }
 
         // Check for complex expressions (CASE, arithmetic, etc.)
+
         if (IsComplexExpression(columnPart))
         {
             // Complex expression: return alias if provided, otherwise return null
@@ -206,7 +438,7 @@ public static partial class SqlInterrogator
         }
 
         // Get the last match
-        var lastMatch = matches[matches.Count - 1];
+        var lastMatch = matches[^1];
         var tableName = lastMatch.Groups[1].Value;
         var columnName = lastMatch.Groups[2].Value;
 
@@ -295,10 +527,10 @@ public static partial class SqlInterrogator
         // If it has a table.column reference (contains dot before the operator), it's OK
         var hasDot = upperPart.Contains('.');
         var hasArithmetic =
-    upperPart.Contains(" + ") ||
-            upperPart.Contains(" - ") ||
-     upperPart.Contains(" * ") ||
-            upperPart.Contains(" / ");
+                upperPart.Contains(" + ") ||
+                upperPart.Contains(" - ") ||
+                upperPart.Contains(" * ") ||
+                upperPart.Contains(" / ");
 
         // Only treat as complex if it has arithmetic BUT no table qualification
         return hasArithmetic && !hasDot;
@@ -357,16 +589,16 @@ public static partial class SqlInterrogator
         // Patterns ordered from most specific (5-part) to least specific (1-part)
         var patterns = new[]
         {
-      // Five-part: [server].[db].[schema].[table].[column]
-     (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 5),
-     // Four-part: [db].[schema].[table].[column] or db.schema.table.column
+            // Five-part: [server].[db].[schema].[table].[column]
+            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 5),
+            // Four-part: [db].[schema].[table].[column] or db.schema.table.column
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]$", 4),
-  // Three-part: [db].[table].[column] or db.table.column
-   (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 3),
-  // Two-part: [table].[column] or table.column
+            // Three-part: [db].[table].[column] or db.table.column
+            (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 3),
+            // Two-part: [table].[column] or table.column
             (@"^\[?([^\]\.]+)\]?\.\[?([^\]\.]+)\]?$", 2),
             // Single part: [column] or column
-    (@"^\[?([^\]\.]+)\]?$", 1),
+            (@"^\[?([^\]\.]+)\]?$", 1),
         };
 
         // Try each pattern to determine the column's qualification level
@@ -428,10 +660,10 @@ public static partial class SqlInterrogator
     private static string ExtractDatabaseNameFromMatch(Match match)
     {
         return match.Groups[DatabaseGroupIndex].Success && !string.IsNullOrWhiteSpace(match.Groups[DatabaseGroupIndex].Value)
-   ? match.Groups[DatabaseGroupIndex].Value
-   : match.Groups[SecondaryDatabaseGroupIndex].Success && !string.IsNullOrWhiteSpace(match.Groups[SecondaryDatabaseGroupIndex].Value)
-            ? match.Groups[SecondaryDatabaseGroupIndex].Value
-   : string.Empty;
+            ? match.Groups[DatabaseGroupIndex].Value
+            : match.Groups[SecondaryDatabaseGroupIndex].Success && !string.IsNullOrWhiteSpace(match.Groups[SecondaryDatabaseGroupIndex].Value)
+                ? match.Groups[SecondaryDatabaseGroupIndex].Value
+                : string.Empty;
     }
 
     /// <summary>
@@ -545,18 +777,19 @@ public static partial class SqlInterrogator
                             result.Add(currentCondition.ToString());
                             _ = currentCondition.Clear();
                         }
+
                         i += 5;
                         continue;
                     }
                     // Check for "AND " at start or after whitespace
-                    else if (next4.Equals("AND ", StringComparison.OrdinalIgnoreCase) &&
-               (i == 0 || char.IsWhiteSpace(whereClause[i - 1])))
+                    else if (next4.Equals("AND ", StringComparison.OrdinalIgnoreCase) && (i == 0 || char.IsWhiteSpace(whereClause[i - 1])))
                     {
                         if (currentCondition.Length > 0)
                         {
                             result.Add(currentCondition.ToString());
                             _ = currentCondition.Clear();
                         }
+
                         i += 4;
                         continue;
                     }
@@ -575,18 +808,19 @@ public static partial class SqlInterrogator
                             result.Add(currentCondition.ToString());
                             _ = currentCondition.Clear();
                         }
+
                         i += 4;
                         continue;
                     }
                     // Check for "OR " at start or after whitespace
-                    else if (next3.Equals("OR ", StringComparison.OrdinalIgnoreCase) &&
-              (i == 0 || char.IsWhiteSpace(whereClause[i - 1])))
+                    else if (next3.Equals("OR ", StringComparison.OrdinalIgnoreCase) && (i == 0 || char.IsWhiteSpace(whereClause[i - 1])))
                     {
                         if (currentCondition.Length > 0)
                         {
                             result.Add(currentCondition.ToString());
                             _ = currentCondition.Clear();
                         }
+
                         i += 3;
                         continue;
                     }

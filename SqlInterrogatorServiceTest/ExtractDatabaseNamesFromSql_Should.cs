@@ -55,14 +55,14 @@ public class ExtractDatabaseNamesFromSql_Should
 
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
-      _ = result.Should().HaveCount(3);
-      _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
-  }
+        _ = result.Should().HaveCount(3);
+        _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
+    }
 
     [Fact]
     public void HandleAllJoinTypes()
     {
-      var sql = @"
+        var sql = @"
          SELECT * FROM [DB1].[dbo].[Table1]
             INNER JOIN [DB2].[dbo].[Table2] ON 1=1
                 LEFT JOIN [DB3].[dbo].[Table3] ON 1=1
@@ -127,7 +127,7 @@ public class ExtractDatabaseNamesFromSql_Should
         _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
     }
 
-  [Fact]
+    [Fact]
     public void IgnoreSqlComments()
     {
         var sql = @"
@@ -301,7 +301,7 @@ public class ExtractDatabaseNamesFromSql_Should
         _ = result.Should().ContainSingle().Which.Should().Be("MyDB");
     }
 
-  [Fact]
+    [Fact]
     public void HandleDeleteStatement()
     {
         var sql = "DELETE FROM [MyDB].[dbo].[Users] WHERE Id = 1";
@@ -324,7 +324,7 @@ public class ExtractDatabaseNamesFromSql_Should
     [Fact]
     public void HandleNestedSubqueriesWithDifferentDatabases()
     {
-            var sql = @"
+        var sql = @"
             SELECT * FROM [DB1].[dbo].[Users] WHERE Id IN (
                 SELECT UserId FROM [DB2].[dbo].[Orders] WHERE OrderId IN (
                     SELECT OrderId FROM [DB3].[dbo].[OrderDetails]
@@ -345,7 +345,7 @@ public class ExtractDatabaseNamesFromSql_Should
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().Contain("데이터베이스");
-}
+    }
 
     [Fact]
     public void HandleCyrillicCharacters()
@@ -368,6 +368,6 @@ public class ExtractDatabaseNamesFromSql_Should
         var result = SqlInterrogator.ExtractDatabaseNamesFromSql(sql);
 
         _ = result.Should().HaveCount(3);
-      _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
+        _ = result.Should().Contain(["DB1", "DB2", "DB3"]);
     }
 }
