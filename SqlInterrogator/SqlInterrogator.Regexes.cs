@@ -1,7 +1,7 @@
-namespace SqlInterrogatorService;
 
 using System.Text.RegularExpressions;
 
+namespace SqlInterrogatorService;
 /// <summary>
 /// Regex patterns and constants for SqlInterrogator.
 /// </summary>
@@ -20,9 +20,19 @@ public static partial class SqlInterrogator
     // Regex timeout in milliseconds to prevent ReDoS attacks and infinite loops
     private const int RegexTimeoutMilliseconds = 1000;
 
+    // Default regex options for dynamic pattern matching
+    // Using Compiled option for better performance on patterns executed multiple times
+    // Combined with IgnoreCase and Multiline for SQL parsing
+    private static readonly RegexOptions DefaultRegexOptions =
+        RegexOptions.IgnoreCase |
+        RegexOptions.Multiline |
+        RegexOptions.Compiled;
+
     // These regex patterns are generated at compile-time using the [GeneratedRegex] attribute
     // for optimal performance. The source generator creates the implementation automatically.
     // All patterns include a 1-second timeout to prevent ReDoS attacks and infinite loops.
+    // NOTE: [GeneratedRegex] provides superior performance to RegexOptions.Compiled as it
+    // generates optimised IL code at compile-time rather than runtime JIT compilation.
 
     /// <summary>Matches single-line SQL comments (-- comment).</summary>
     [GeneratedRegex(@"--[^\r\n]*", RegexOptions.Multiline, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]

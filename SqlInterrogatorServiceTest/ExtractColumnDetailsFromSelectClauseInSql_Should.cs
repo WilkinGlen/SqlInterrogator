@@ -1,8 +1,8 @@
-namespace SqlInterrogatorServiceTest;
 
 using FluentAssertions;
 using SqlInterrogatorService;
 
+namespace SqlInterrogatorServiceTest;
 public class ExtractColumnDetailsFromSelectClauseInSql_Should
 {
     [Fact]

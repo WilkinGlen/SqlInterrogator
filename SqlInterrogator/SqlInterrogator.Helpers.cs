@@ -1,7 +1,7 @@
-namespace SqlInterrogatorService;
 
 using System.Text.RegularExpressions;
 
+namespace SqlInterrogatorService;
 /// <summary>
 /// Private helper methods for SqlInterrogator.
 /// </summary>
@@ -12,7 +12,7 @@ public static partial class SqlInterrogator
     /// </summary>
     private static string[] GetDatabasePatterns()
     {
-        return 
+        return
         [
             // Four-part patterns MUST come first to match before three-part patterns
             // Server.database.schema.table (four-part names) - extract database (2nd part)
@@ -189,7 +189,7 @@ public static partial class SqlInterrogator
     {
         foreach (var pattern in patterns)
         {
-            var matches = Regex.Matches(sql, pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            var matches = Regex.Matches(sql, pattern, DefaultRegexOptions, TimeSpan.FromMilliseconds(RegexTimeoutMilliseconds));
             foreach (Match match in matches)
             {
                 if (ShouldSkipAsPartOfFourPartIdentifier(match, sql))
@@ -216,7 +216,7 @@ public static partial class SqlInterrogator
     {
         foreach (var pattern in patterns)
         {
-            var match = Regex.Match(sql, pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            var match = Regex.Match(sql, pattern, DefaultRegexOptions, TimeSpan.FromMilliseconds(RegexTimeoutMilliseconds));
             if (match.Success)
             {
                 var tableName = TryExtractTableNameFromMatch(match);
