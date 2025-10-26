@@ -693,8 +693,22 @@ public static partial class SqlInterrogator
         // Check for complex expressions (CASE, arithmetic, etc.)
         if (IsComplexExpression(columnPart))
         {
-            // Complex expression: return alias if provided, otherwise null
+            // Complex expression: return alias if provided, otherwise return null
             return aliasName != null ? (null, null, (aliasName, null)) : null;
+        }
+
+        // Special case: parenthesized arithmetic with qualified columns
+        // Example: (o.Price * o.Quantity) - o.Discount
+        // This has dots (so not marked complex) but starts with ( so won't match ParseQualifiedColumnName patterns
+        if (columnPart.TrimStart().StartsWith('(') && columnPart.Contains('.') && aliasName != null)
+        {
+            // Extract the last qualified column reference
+            var lastColumn = ExtractLastQualifiedColumn(columnPart);
+            if (lastColumn.HasValue)
+            {
+                // Return the last column with the alias
+                return (lastColumn.Value.DatabaseName, lastColumn.Value.TableName, (lastColumn.Value.Column.ColumnName, aliasName));
+            }
         }
 
         if (IsFunctionCall(columnPart, out var functionName))
@@ -706,6 +720,31 @@ public static partial class SqlInterrogator
 
         // Parse qualified column names
         return ParseQualifiedColumnName(columnPart, aliasName);
+    }
+
+    /// <summary>
+    /// Extracts the last qualified column reference from a complex expression.
+    /// Used for expressions like (o.Price * o.Quantity) - o.Discount to extract "o.Discount".
+    /// </summary>
+    private static (string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)? ExtractLastQualifiedColumn(string expression)
+    {
+        // Find all qualified column patterns (table.column or db.table.column)
+        // Match patterns like o.Price, t.Quantity, MyDB.dbo.Users.Name
+        var columnPattern = @"\b(\w+)\.(\w+)\b";
+        var matches = Regex.Matches(expression, columnPattern);
+        
+        if (matches.Count == 0)
+        {
+            return null;
+        }
+
+        // Get the last match
+        var lastMatch = matches[matches.Count - 1];
+   var tableName = lastMatch.Groups[1].Value;
+        var columnName = lastMatch.Groups[2].Value;
+
+        // Return as a two-part qualified column (table.column)
+        return (null, tableName, (columnName, null));
     }
 
     /// <summary>
