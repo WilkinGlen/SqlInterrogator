@@ -12,27 +12,28 @@ public static partial class SqlInterrogator
     /// </summary>
     private static string[] GetDatabasePatterns()
     {
-        return [
-        // Four-part patterns MUST come first to match before three-part patterns
-        // Server.database.schema.table (four-part names) - extract database (2nd part)
-        BracketedFourPartPattern,
-        UnbracketedFourPartPattern,
-        // Three-part patterns
-        // Bracketed three-part identifier [db].[schema].[table]
-        BracketedThreePartPattern,
-        // Mixed bracketed/unbracketed
-        MixedThreePartPattern1,
-        MixedThreePartPattern2,
-        // Unbracketed three-part identifier db.schema.table
-        UnbracketedThreePartPattern,
-        // Double-quoted identifiers "db"."schema"."table"
-        DoubleQuotedThreePartPattern,
-        // Mixed quoted and bracketed "db".[schema].[table]
-        MixedQuotedBracketedPattern,
-        // Table hints WITH (NOLOCK) etc
-        BracketedWithHintPattern,
-        UnbracketedWithHintPattern,
-    ];
+        return 
+        [
+            // Four-part patterns MUST come first to match before three-part patterns
+            // Server.database.schema.table (four-part names) - extract database (2nd part)
+            BracketedFourPartPattern,
+            UnbracketedFourPartPattern,
+            // Three-part patterns
+            // Bracketed three-part identifier [db].[schema].[table]
+            BracketedThreePartPattern,
+            // Mixed bracketed/unbracketed
+            MixedThreePartPattern1,
+            MixedThreePartPattern2,
+            // Unbracketed three-part identifier db.schema.table
+            UnbracketedThreePartPattern,
+            // Double-quoted identifiers "db"."schema"."table"
+            DoubleQuotedThreePartPattern,
+            // Mixed quoted and bracketed "db".[schema].[table]
+            MixedQuotedBracketedPattern,
+            // Table hints WITH (NOLOCK) etc
+            BracketedWithHintPattern,
+            UnbracketedWithHintPattern,
+        ];
     }
 
     /// <summary>

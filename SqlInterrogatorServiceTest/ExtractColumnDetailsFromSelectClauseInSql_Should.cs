@@ -464,7 +464,7 @@ public class ExtractColumnDetailsFromSelectClauseInSql_Should
         var result = SqlInterrogator.ExtractColumnDetailsFromSelectClauseInSql(sql);
 
         // Parser interprets parentheses-separated parts differently, returning unexpected structure
-        // Actual behavior: extracts "Discount" with alias "NetTotal"
+        // Actual behaviour: extracts "Discount" with alias "NetTotal"
         _ = result.Should().ContainSingle();
         _ = result[0].Column.Alias.Should().Be("NetTotal");
     }
