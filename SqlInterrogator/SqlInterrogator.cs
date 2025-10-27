@@ -208,6 +208,8 @@ public static partial class SqlInterrogator
     /// <item>LIKE patterns: WHERE Email LIKE '%@example.com' → ("Email", "LIKE", "'%@example.com'")</item>
     /// <item>Comparison operators: =, !=, <>, >, <, >=, <=, LIKE, IN, IS, IS NOT</item>
     /// <item>Bracketed identifiers: WHERE [User Name] = 'John' → ("User Name", "=", "'John'")</item>
+    /// <item>Fully bracketed qualified names: WHERE [dbo].[Users].[Active] = 1 → ("dbo.Users.Active", "=", "1")</item>
+    /// <item>Double-quoted identifiers: WHERE "dbo"."Users"."Email" = 'test@test.com' → ("dbo.Users.Email", "=", "'test@test.com'")</item>
     /// <item>Bracketed column values: WHERE OrderDate > [LastModifiedDate] → ("OrderDate", ">", "[LastModifiedDate]")</item>
     /// <item>NULL checks: WHERE DeletedDate IS NULL → ("DeletedDate", "IS", "NULL")</item>
     /// <item>NOT NULL checks: WHERE CreatedDate IS NOT NULL → ("CreatedDate", "IS NOT", "NULL")</item>
@@ -229,7 +231,7 @@ public static partial class SqlInterrogator
     /// var conditions = SqlInterrogator.ExtractWhereClausesFromSql(sql);
     /// // Result:
     /// // [
-    /// //   ((ColumnName: "Id", Alias: null), "=", "1"),
+    /// // ((ColumnName: "Id", Alias: null), "=", "1"),
     /// //   ((ColumnName: "Active", Alias: null), "=", "1"),
     /// //   ((ColumnName: "Email", Alias: null), "LIKE", "'%@test.com'")
     /// // ]
@@ -257,6 +259,10 @@ public static partial class SqlInterrogator
     /// //   ((ColumnName: "Id", Alias: null), "=", "@userId"),
     /// //   ((ColumnName: "Status", Alias: null), "=", "@userStatus")
     /// // ]
+    /// 
+    /// var sql7 = "SELECT * FROM Users WHERE [dbo].[Users].[Active] = 1";
+    /// var conditions7 = SqlInterrogator.ExtractWhereClausesFromSql(sql7);
+    /// // Result: [((ColumnName: "dbo.Users.Active", Alias: null), "=", "1")]
     /// </code>
     /// </example>
     public static List<((string ColumnName, string? Alias) Column, string Operator, string Value)> ExtractWhereClausesFromSql(string sql)

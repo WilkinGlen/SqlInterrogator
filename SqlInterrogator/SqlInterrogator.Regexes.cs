@@ -110,7 +110,7 @@ public static partial class SqlInterrogator
     private static partial Regex WhereClauseRegex();
 
     /// <summary>Matches comparison operators in WHERE conditions including SQL parameters.</summary>
-    [GeneratedRegex(@"([\w\[\]\.""]+)\s*(>=|<=|!=|<>|>|<|=|LIKE|IN|IS\s+NOT|IS|NOT\s+IN|NOT\s+LIKE)\s*([\w\[\]\.""]+|'[^']*'|\([^)]+\)|@\w+)?", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
+    [GeneratedRegex(@"((?:\[[^\]]+\]|""[^""]+""|\w+)(?:\.(?:\[[^\]]+\]|""[^""]+""|\w+))*)\s*(>=|<=|!=|<>|>|<|=|LIKE|IN|IS\s+NOT|IS|NOT\s+IN|NOT\s+LIKE)\s*((?:\[[^\]]+\]|""[^""]+""|\w+)(?:\.(?:\[[^\]]+\]|""[^""]+""|\w+))*|'[^']*'|\([^)]+\)|@\w+)?", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex WhereConditionRegex();
 
     // Bracketed three-part identifier [db].[schema].[table]

@@ -166,17 +166,32 @@ public static partial class SqlInterrogator
             var conditionMatch = WhereConditionRegex().Match(trimmedCondition);
             if (conditionMatch.Success)
             {
-                var columnName = conditionMatch.Groups[1].Value.Trim().Trim('[', ']', '"');
+                var rawColumnName = conditionMatch.Groups[1].Value.Trim();
+                var columnName = CleanBracketedIdentifier(rawColumnName);
                 var operatorPart = conditionMatch.Groups[2].Value.Trim();
                 var valuePart = conditionMatch.Groups.Count > 3 && conditionMatch.Groups[3].Success
-                         ? conditionMatch.Groups[3].Value.Trim()
-                              : string.Empty;
+               ? conditionMatch.Groups[3].Value.Trim()
+               : string.Empty;
 
                 result.Add(((columnName, null), operatorPart, valuePart));
             }
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Cleans a bracketed or quoted identifier by removing all brackets and quotes.
+    /// Handles fully qualified names like [dbo].[Users].[Active] → dbo.Users.Active
+    /// </summary>
+    /// <param name="identifier">The identifier to clean.</param>
+    /// <returns>The cleaned identifier with brackets and quotes removed.</returns>
+    private static string CleanBracketedIdentifier(string identifier)
+    {
+        // Remove all brackets and double quotes, preserving dots
+        // [dbo].[Users].[Active] → dbo.Users.Active
+        // "dbo"."Users"."Active" → dbo.Users.Active
+        return identifier.Replace("[", "").Replace("]", "").Replace("\"", "");
     }
 
     /// <summary>

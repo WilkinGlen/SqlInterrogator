@@ -118,7 +118,7 @@ public class ExtractWhereClausesFromSql_Should_New
         var result = SqlInterrogator.ExtractWhereClausesFromSql(sql);
 
         _ = result.Should().ContainSingle();
-        _ = result[0].Column.ColumnName.Should().Be("Name");
+        _ = result[0].Column.ColumnName.Should().Be("User Name");
         _ = result[0].Operator.Should().Be("=");
         _ = result[0].Value.Should().Be("'John'");
     }
@@ -455,7 +455,9 @@ public class ExtractWhereClausesFromSql_Should_New
         var result = SqlInterrogator.ExtractWhereClausesFromSql(sql);
 
         _ = result.Should().ContainSingle();
-        _ = result[0].Column.ColumnName.Should().Be("dbo].[Users].[Active");
+        _ = result[0].Column.ColumnName.Should().Be("dbo.Users.Active");
+        _ = result[0].Operator.Should().Be("=");
+        _ = result[0].Value.Should().Be("1");
     }
 
     [Fact]
@@ -636,7 +638,7 @@ public class ExtractWhereClausesFromSql_Should_New
         var result = SqlInterrogator.ExtractWhereClausesFromSql(sql);
 
         _ = result.Should().ContainSingle();
-        _ = result[0].Column.ColumnName.Should().Be("dbo].[Orders].[CreatedDate");
+        _ = result[0].Column.ColumnName.Should().Be("dbo.Orders.CreatedDate");
         _ = result[0].Operator.Should().Be("<");
         _ = result[0].Value.Should().Be("[dbo].[Users].[RegisteredDate]");
     }
@@ -918,7 +920,7 @@ public class ExtractWhereClausesFromSql_Should_New
         var result = SqlInterrogator.ExtractWhereClausesFromSql(sql);
 
         _ = result.Should().ContainSingle();
-        _ = result[0].Column.ColumnName.Should().Be("Name");
+        _ = result[0].Column.ColumnName.Should().Be("User Name");
         _ = result[0].Operator.Should().Be("=");
         _ = result[0].Value.Should().Be("@userName");
     }
@@ -934,5 +936,73 @@ public class ExtractWhereClausesFromSql_Should_New
         _ = result[0].Column.ColumnName.Should().Be("MyDB.dbo.Users.Status");
         _ = result[0].Operator.Should().Be("=");
         _ = result[0].Value.Should().Be("@userStatus");
+    }
+
+    [Fact]
+    public void ExtractCondition_WhenAllBracketedWithSpaces()
+    {
+        var sql = "SELECT * FROM Users WHERE [First Name] = [Last Name]";
+
+        var result = SqlInterrogator.ExtractWhereClausesFromSql(sql);
+
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("First Name");
+        _ = result[0].Operator.Should().Be("=");
+        _ = result[0].Value.Should().Be("[Last Name]");
+    }
+
+    [Fact]
+    public void ExtractCondition_WhenMixedBracketedAndUnbracketed()
+    {
+        var sql = "SELECT * FROM Users WHERE [dbo].Users.[Active] = 1";
+
+        var result = SqlInterrogator.ExtractWhereClausesFromSql(sql);
+
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("dbo.Users.Active");
+        _ = result[0].Operator.Should().Be("=");
+        _ = result[0].Value.Should().Be("1");
+    }
+
+    [Fact]
+    public void ExtractConditions_WhenMultipleBracketedQualifiedColumns()
+    {
+        var sql = "SELECT * FROM Users WHERE [dbo].[Users].[First Name] = 'John' AND [dbo].[Users].[Last Name] = 'Doe'";
+
+        var result = SqlInterrogator.ExtractWhereClausesFromSql(sql);
+
+        _ = result.Should().HaveCount(2);
+        _ = result[0].Column.ColumnName.Should().Be("dbo.Users.First Name");
+        _ = result[0].Operator.Should().Be("=");
+        _ = result[0].Value.Should().Be("'John'");
+        _ = result[1].Column.ColumnName.Should().Be("dbo.Users.Last Name");
+        _ = result[1].Operator.Should().Be("=");
+        _ = result[1].Value.Should().Be("'Doe'");
+    }
+
+    [Fact]
+    public void ExtractCondition_WhenDoubleQuotedQualifiedColumn()
+    {
+        var sql = "SELECT * FROM Users WHERE \"dbo\".\"Users\".\"Email\" = 'test@example.com'";
+
+        var result = SqlInterrogator.ExtractWhereClausesFromSql(sql);
+
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("dbo.Users.Email");
+        _ = result[0].Operator.Should().Be("=");
+        _ = result[0].Value.Should().Be("'test@example.com'");
+    }
+
+    [Fact]
+    public void ExtractCondition_WhenBracketedFourPartIdentifier()
+    {
+        var sql = "SELECT * FROM Users WHERE [Server].[DB].[dbo].[Users].[Active] = 1";
+
+        var result = SqlInterrogator.ExtractWhereClausesFromSql(sql);
+
+        _ = result.Should().ContainSingle();
+        _ = result[0].Column.ColumnName.Should().Be("Server.DB.dbo.Users.Active");
+        _ = result[0].Operator.Should().Be("=");
+        _ = result[0].Value.Should().Be("1");
     }
 }
