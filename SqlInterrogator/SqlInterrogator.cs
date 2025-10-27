@@ -1,4 +1,4 @@
-﻿namespace SqlInterrogatorService;
+namespace SqlInterrogatorService;
 /// <summary>
 /// Provides static methods for extracting information from SQL queries, including database names,
 /// table names, and column details. Supports various SQL identifier formats including bracketed,
@@ -193,7 +193,7 @@ public static partial class SqlInterrogator
     /// <list type="bullet">
     /// <item><c>Column</c> - A tuple with ColumnName (the column being filtered) and Alias (null for WHERE clause columns)</item>
     /// <item><c>Operator</c> - The comparison operator (=, !=, <>, >, <, >=, <=, LIKE, IN, IS, IS NOT, etc.)</item>
-    /// <item><c>Value</c> - The comparison value (e.g., "1", "'John'", "(1,2,3)", "NULL" for IS/IS NOT, or another column name like "u.Id")</item>
+    /// <item><c>Value</c> - The comparison value (e.g., "1", "'John'", "(1,2,3)", "@userId", "NULL" for IS/IS NOT, or another column name like "u.Id")</item>
     /// </list>
     /// Returns an empty list if the SQL has no WHERE clause or contains no valid conditions.
     /// </returns>
@@ -202,6 +202,7 @@ public static partial class SqlInterrogator
     /// <list type="bullet">
     /// <item>Simple comparisons: WHERE Id = 1 → ("Id", "=", "1")</item>
     /// <item>String comparisons: WHERE Name = 'John' → ("Name", "=", "'John'")</item>
+    /// <item>SQL parameters: WHERE Id = @userId → ("Id", "=", "@userId")</item>
     /// <item>Qualified columns: WHERE u.Active = 1 → ("u.Active", "=", "1")</item>
     /// <item>Column-to-column comparisons: WHERE o.UserId = u.Id → ("o.UserId", "=", "u.Id")</item>
     /// <item>LIKE patterns: WHERE Email LIKE '%@example.com' → ("Email", "LIKE", "'%@example.com'")</item>
@@ -211,6 +212,7 @@ public static partial class SqlInterrogator
     /// <item>NULL checks: WHERE DeletedDate IS NULL → ("DeletedDate", "IS", "NULL")</item>
     /// <item>NOT NULL checks: WHERE CreatedDate IS NOT NULL → ("CreatedDate", "IS NOT", "NULL")</item>
     /// <item>IN clauses: WHERE Status IN (1,2,3) → ("Status", "IN", "(1,2,3)")</item>
+    /// <item>IN clauses with parameters: WHERE Status IN (@status1, @status2) → ("Status", "IN", "(@status1")</item>
     /// <item>Comments are automatically removed before processing</item>
     /// <item>Handles conditions before ORDER BY, GROUP BY, HAVING, or UNION clauses</item>
     /// </list>
@@ -247,6 +249,14 @@ public static partial class SqlInterrogator
     /// var sql5 = "SELECT * FROM Orders o JOIN Users u ON o.UserId = u.Id WHERE o.Status = u.DefaultStatus";
     /// var conditions5 = SqlInterrogator.ExtractWhereClausesFromSql(sql5);
     /// // Result: [((ColumnName: "o.Status", Alias: null), "=", "u.DefaultStatus")]
+    /// 
+    /// var sql6 = "SELECT * FROM Users WHERE Id = @userId AND Status = @userStatus";
+    /// var conditions6 = SqlInterrogator.ExtractWhereClausesFromSql(sql6);
+    /// // Result:
+    /// // [
+    /// //   ((ColumnName: "Id", Alias: null), "=", "@userId"),
+    /// //   ((ColumnName: "Status", Alias: null), "=", "@userStatus")
+    /// // ]
     /// </code>
     /// </example>
     public static List<((string ColumnName, string? Alias) Column, string Operator, string Value)> ExtractWhereClausesFromSql(string sql)

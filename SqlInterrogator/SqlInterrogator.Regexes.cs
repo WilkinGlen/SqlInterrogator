@@ -1,4 +1,3 @@
-
 using System.Text.RegularExpressions;
 
 namespace SqlInterrogatorService;
@@ -110,8 +109,8 @@ public static partial class SqlInterrogator
     [GeneratedRegex(@"\bWHERE\b\s+(.*?)(?:\bORDER\s+BY\b|\bGROUP\s+BY\b|\bHAVING\b|\bUNION\b|;|$)", RegexOptions.IgnoreCase | RegexOptions.Singleline, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex WhereClauseRegex();
 
-    /// <summary>Matches comparison operators in WHERE conditions.</summary>
-    [GeneratedRegex(@"([\w\[\]\.""]+)\s*(>=|<=|!=|<>|>|<|=|LIKE|IN|IS\s+NOT|IS|NOT\s+IN|NOT\s+LIKE)\s*([\w\[\]\.""]+|'[^']*'|\([^)]+\))?", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
+    /// <summary>Matches comparison operators in WHERE conditions including SQL parameters.</summary>
+    [GeneratedRegex(@"([\w\[\]\.""]+)\s*(>=|<=|!=|<>|>|<|=|LIKE|IN|IS\s+NOT|IS|NOT\s+IN|NOT\s+LIKE)\s*([\w\[\]\.""]+|'[^']*'|\([^)]+\)|@\w+)?", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex WhereConditionRegex();
 
     // Bracketed three-part identifier [db].[schema].[table]
