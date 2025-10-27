@@ -42,7 +42,7 @@ public static partial class SqlInterrogator
     /// // Result: ["MyDB", "AnotherDB"]
     /// </code>
     /// </example>
-    public static List<string> ExtractDatabaseNamesFromSql(string sql)
+    public static List<string> ExtractDatabaseNamesFromSql(string? sql)
     {
         if (string.IsNullOrWhiteSpace(sql))
         {
@@ -91,7 +91,7 @@ public static partial class SqlInterrogator
     /// // Result: "Users" (first table in FROM clause)
     /// </code>
     /// </example>
-    public static string? ExtractFirstTableNameFromSelectClauseInSql(string sql)
+    public static string? ExtractFirstTableNameFromSelectClauseInSql(string? sql)
     {
         if (string.IsNullOrWhiteSpace(sql))
         {
@@ -154,7 +154,7 @@ public static partial class SqlInterrogator
     /// // Result: [("MyDB", "Users", (ColumnName: "FirstName", Alias: null))]
     /// </code>
     /// </example>
-    public static List<(string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)> ExtractColumnDetailsFromSelectClauseInSql(string sql)
+    public static List<(string? DatabaseName, string? TableName, (string ColumnName, string? Alias) Column)> ExtractColumnDetailsFromSelectClauseInSql(string? sql)
     {
         if (string.IsNullOrWhiteSpace(sql))
         {
@@ -265,24 +265,24 @@ public static partial class SqlInterrogator
     /// // Result: [((ColumnName: "dbo.Users.Active", Alias: null), "=", "1")]
     /// </code>
     /// </example>
-    public static List<((string ColumnName, string? Alias) Column, string Operator, string Value)> ExtractWhereClausesFromSql(string sql)
+    public static List<((string ColumnName, string? Alias) Column, string Operator, string Value)> ExtractWhereClausesFromSql(string? sql)
     {
         if (string.IsNullOrWhiteSpace(sql))
         {
-            return [];
+         return [];
         }
 
-        sql = PreprocessSql(sql);
+  sql = PreprocessSql(sql);
 
-        var whereMatch = WhereClauseRegex().Match(sql);
-        if (!whereMatch.Success)
+ var whereMatch = WhereClauseRegex().Match(sql);
+    if (!whereMatch.Success)
         {
-            return [];
-        }
+     return [];
+ }
 
         var whereClause = whereMatch.Groups[1].Value.Trim();
         var individualConditions = SplitWhereConditions(whereClause);
 
-        return ParseWhereConditions(individualConditions);
+   return ParseWhereConditions(individualConditions);
     }
 }
