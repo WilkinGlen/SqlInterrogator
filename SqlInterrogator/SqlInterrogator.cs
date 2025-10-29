@@ -387,30 +387,179 @@ public static partial class SqlInterrogator
     public static string? ConvertSelectStatementToSelectCount(string sql)
     {
         if (string.IsNullOrWhiteSpace(sql))
-      {
-  return null;
-   }
+        {
+            return null;
+        }
 
-   sql = PreprocessSql(sql);
+        sql = PreprocessSql(sql);
         // Only process SELECT statements
         if (!IgnoreCaseRegex().IsMatch(sql))
-     {
-    return null;
+        {
+            return null;
         }
 
         if (!TryExtractSelectClause(sql, out var selectClause) || selectClause == null)
         {
-   return null;
+            return null;
         }
 
-   var countSelectClause = "SELECT COUNT(*)";
+        var countSelectClause = "SELECT COUNT(*)";
         var fromIndex = sql.IndexOfIgnoreCase(" FROM ");
-      if (fromIndex < 0)
+        if (fromIndex < 0)
         {
             return null;
- }
+        }
 
         var fromAndBeyond = sql[fromIndex..];
         return countSelectClause + fromAndBeyond;
+    }
+
+    /// <summary>
+    /// Converts a SELECT statement to a SELECT TOP N statement while preserving all other clauses.
+    /// </summary>
+    /// <param name="sql">The SQL SELECT statement to convert.</param>
+    /// <param name="top">The number of rows to return. Must be greater than 0.</param>
+    /// <returns>
+    /// A new SQL statement with the SELECT clause replaced by "SELECT TOP N" and all other clauses
+    /// (FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY) preserved. Returns null if the input is not
+    /// a valid SELECT statement, if it lacks a FROM clause, or if top is less than or equal to 0.
+    /// </returns>
+    /// <remarks>
+    /// <para>This method is useful for limiting result sets, commonly needed for performance optimization,
+    /// data sampling, and retrieving top N results based on specific criteria.</para>
+    /// <para>The method:</para>
+    /// <list type="bullet">
+    /// <item>Validates the input is a SELECT statement (returns null for UPDATE, INSERT, DELETE)</item>
+    /// <item>Validates that top is greater than 0 (returns null if top &lt;= 0)</item>
+    /// <item>Preprocesses SQL to remove comments, CTEs, and USE statements</item>
+    /// <item>Replaces any SELECT clause (SELECT *, columns, functions, DISTINCT, existing TOP) with "SELECT TOP N"</item>
+    /// <item>Preserves all clauses after FROM: WHERE, JOIN, GROUP BY, HAVING, ORDER BY, OFFSET/FETCH</item>
+    /// <item>Maintains table aliases, hints (NOLOCK), and qualified table names</item>
+    /// <item>Returns null if no FROM clause exists (e.g., SELECT GETDATE())</item>
+    /// <item>Existing TOP clauses are replaced with the new TOP value</item>
+    /// </list>
+    /// <para>Common use cases:</para>
+    /// <list type="bullet">
+    /// <item>Performance optimization: Limit result set size for expensive queries</item>
+    /// <item>Data sampling: Get a sample of data for analysis or testing</item>
+    /// <item>Top N queries: Retrieve top performers, recent items, etc. with ORDER BY</item>
+    /// <item>Preview data: Show first N rows without fetching entire result set</item>
+    /// <item>Debugging: Quickly verify query results with limited output</item>
+    /// </list>
+    /// <para>Limitations:</para>
+    /// <list type="bullet">
+    /// <item>TOP without ORDER BY returns arbitrary rows (non-deterministic)</item>
+    /// <item>DISTINCT keyword is removed during preprocessing</item>
+    /// <item>TOP PERCENT syntax is not supported (only TOP N)</item>
+    /// <item>Existing OFFSET/FETCH clauses are preserved but may conflict with TOP</item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <para><strong>Basic Conversion:</strong></para>
+    /// <code>
+    /// var sql = "SELECT Name, Email FROM Users WHERE Active = 1";
+    /// var topSql = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
+    /// // Result: "SELECT TOP 10 Name, Email FROM Users WHERE Active = 1"
+    /// </code>
+    /// 
+    /// <para><strong>Top N with ORDER BY:</strong></para>
+    /// <code>
+    /// var sql = "SELECT ProductName, SalesTotal FROM Products ORDER BY SalesTotal DESC";
+    /// var topSql = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 5);
+    /// // Result: "SELECT TOP 5 ProductName, SalesTotal FROM Products ORDER BY SalesTotal DESC"
+    /// // Returns top 5 products by sales
+    /// </code>
+    /// 
+    /// <para><strong>Performance Optimization:</strong></para>
+    /// <code>
+    /// // Original expensive query
+    /// var sql = @"
+    ///   SELECT u.Name, u.Email, COUNT(o.OrderId) AS OrderCount
+    ///     FROM Users u
+    ///     LEFT JOIN Orders o ON u.Id = o.UserId
+    ///     GROUP BY u.Name, u.Email
+    ///     HAVING COUNT(o.OrderId) &gt; 0
+    ///     ORDER BY COUNT(o.OrderId) DESC";
+    /// 
+    /// // Limit to top 100 users
+    /// var topSql = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 100);
+    /// // Result: "SELECT TOP 100 u.Name, u.Email, COUNT(o.OrderId) AS OrderCount FROM Users u LEFT JOIN Orders o ON u.Id = o.UserId GROUP BY u.Name, u.Email HAVING COUNT(o.OrderId) > 0 ORDER BY COUNT(o.OrderId) DESC"
+    /// </code>
+    /// 
+    /// <para><strong>Replacing Existing TOP:</strong></para>
+    /// <code>
+    /// var sql = "SELECT TOP 100 * FROM Users ORDER BY CreatedDate DESC";
+    /// var topSql = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
+    /// // Result: "SELECT TOP 10 * FROM Users ORDER BY CreatedDate DESC"
+    /// // Existing TOP 100 is replaced with TOP 10
+    /// </code>
+    /// 
+    /// <para><strong>Data Sampling:</strong></para>
+    /// <code>
+    /// var sql = "SELECT * FROM LargeTable WHERE Category = @category";
+    /// var sampleSql = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 1000);
+    /// // Result: "SELECT TOP 1000 * FROM LargeTable WHERE Category = @category"
+    /// // Get sample of 1000 rows for analysis
+    /// </code>
+    /// 
+    /// <para><strong>Invalid Input (returns null):</strong></para>
+    /// <code>
+    /// var updateSql = "UPDATE Users SET Active = 1";
+    /// var result = SqlInterrogator.ConvertSelectStatementToSelectTop(updateSql, 10);
+    /// // Result: null
+    /// 
+    /// var noFromSql = "SELECT GETDATE()";
+    /// var result2 = SqlInterrogator.ConvertSelectStatementToSelectTop(noFromSql, 10);
+    /// // Result: null
+    /// 
+    /// var invalidTop = SqlInterrogator.ConvertSelectStatementToSelectTop("SELECT * FROM Users", 0);
+    /// // Result: null (top must be > 0)
+    /// 
+    /// var negativeTop = SqlInterrogator.ConvertSelectStatementToSelectTop("SELECT * FROM Users", -1);
+    /// // Result: null (top must be > 0)
+    /// </code>
+    /// 
+    /// <para><strong>With SQL Parameters:</strong></para>
+    /// <code>
+    /// var sql = "SELECT * FROM Users WHERE Status = @status ORDER BY CreatedDate DESC";
+    /// var topSql = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 50);
+    /// // Result: "SELECT TOP 50 * FROM Users WHERE Status = @status ORDER BY CreatedDate DESC"
+    /// // Parameters are preserved and can be used with the TOP query
+    /// </code>
+    /// </example>
+    public static string? ConvertSelectStatementToSelectTop(string sql, int top)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            return null;
+        }
+
+        if (top <= 0)
+        {
+            return null;
+        }
+
+        sql = PreprocessSql(sql);
+
+        // Only process SELECT statements
+        if (!IgnoreCaseRegex().IsMatch(sql))
+        {
+            return null;
+        }
+
+        if (!TryExtractSelectClause(sql, out var selectClause) || selectClause == null)
+        {
+            return null;
+        }
+
+        var topSelectClause = $"SELECT TOP {top}";
+        var fromIndex = sql.IndexOfIgnoreCase(" FROM ");
+        if (fromIndex < 0)
+        {
+            return null;
+        }
+
+        var fromAndBeyond = sql[fromIndex..];
+        return topSelectClause + fromAndBeyond;
     }
 }
