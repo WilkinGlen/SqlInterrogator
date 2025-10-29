@@ -269,20 +269,148 @@ public static partial class SqlInterrogator
     {
         if (string.IsNullOrWhiteSpace(sql))
         {
-         return [];
+            return [];
         }
 
-  sql = PreprocessSql(sql);
+        sql = PreprocessSql(sql);
 
- var whereMatch = WhereClauseRegex().Match(sql);
-    if (!whereMatch.Success)
+        var whereMatch = WhereClauseRegex().Match(sql);
+        if (!whereMatch.Success)
         {
-     return [];
- }
+            return [];
+        }
 
         var whereClause = whereMatch.Groups[1].Value.Trim();
         var individualConditions = SplitWhereConditions(whereClause);
 
-   return ParseWhereConditions(individualConditions);
+        return ParseWhereConditions(individualConditions);
+    }
+
+    /// <summary>
+    /// Converts a SELECT statement to a SELECT COUNT(*) statement while preserving all other clauses.
+    /// </summary>
+    /// <param name="sql">The SQL SELECT statement to convert.</param>
+    /// <returns>
+    /// A new SQL statement with the SELECT clause replaced by "SELECT COUNT(*)" and all other clauses
+    /// (FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY) preserved. Returns null if the input is not
+    /// a valid SELECT statement or if it lacks a FROM clause.
+    /// </returns>
+    /// <remarks>
+    /// <para>This method is useful for converting data retrieval queries into count queries, commonly
+    /// needed for pagination scenarios where you need both the data and the total row count.</para>
+    /// <para>The method:</para>
+    /// <list type="bullet">
+    /// <item>Validates the input is a SELECT statement (returns null for UPDATE, INSERT, DELETE)</item>
+    /// <item>Preprocesses SQL to remove comments, CTEs, and USE statements</item>
+    /// <item>Replaces any SELECT clause (SELECT *, columns, functions, DISTINCT, TOP) with "SELECT COUNT(*)"</item>
+    /// <item>Preserves all clauses after FROM: WHERE, JOIN, GROUP BY, HAVING, ORDER BY, OFFSET/FETCH</item>
+    /// <item>Maintains table aliases, hints (NOLOCK), and qualified table names</item>
+    /// <item>Returns null if no FROM clause exists (e.g., SELECT GETDATE())</item>
+    /// </list>
+    /// <para>Common use cases:</para>
+    /// <list type="bullet">
+    /// <item>Pagination: Get total count for the same query used to fetch paged data</item>
+    /// <item>Performance testing: Check row count before executing expensive data retrieval</item>
+    /// <item>Conditional loading: Verify rows exist before fetching full result set</item>
+    /// <item>Query optimization: Test filter effectiveness by counting matching rows</item>
+    /// </list>
+    /// <para>Limitations:</para>
+    /// <list type="bullet">
+    /// <item>ORDER BY clauses are preserved but have no effect on COUNT (SQL is still valid)</item>
+    /// <item>DISTINCT and TOP keywords are removed during preprocessing</item>
+    /// <item>Subqueries in SELECT clause are removed (only outer query is converted)</item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <para><strong>Basic Conversion:</strong></para>
+    /// <code>
+    /// var sql = "SELECT Name, Email FROM Users WHERE Active = 1";
+    /// var countSql = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+    /// // Result: "SELECT COUNT(*) FROM Users WHERE Active = 1"
+    /// </code>
+    /// 
+    /// <para><strong>Pagination Scenario:</strong></para>
+    /// <code>
+    /// // Original query with pagination
+    /// var dataQuery = @"
+    ///     SELECT u.Id, u.Name, u.Email 
+    ///     FROM Users u 
+    ///     WHERE u.Active = 1 
+    ///     ORDER BY u.CreatedDate DESC 
+    /// OFFSET 20 ROWS 
+    ///     FETCH NEXT 10 ROWS ONLY";
+    /// 
+    /// // Get count query for total rows
+    /// var countQuery = SqlInterrogator.ConvertSelectStatementToSelectCount(dataQuery);
+    /// // Result: "SELECT COUNT(*) FROM Users u WHERE u.Active = 1 ORDER BY u.CreatedDate DESC OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY"
+    /// 
+    /// // Execute both queries
+    /// var data = await db.QueryAsync&lt;User&gt;(dataQuery);
+    /// var total = await db.ExecuteScalarAsync&lt;int&gt;(countQuery);
+    /// </code>
+    /// 
+    /// <para><strong>Complex Query with JOINs:</strong></para>
+    /// <code>
+    /// var sql = @"
+    ///     SELECT u.Name, o.OrderDate, p.ProductName
+    ///     FROM Users u
+    ///     INNER JOIN Orders o ON u.Id = o.UserId
+    ///     LEFT JOIN Products p ON o.ProductId = p.Id
+    ///     WHERE u.Active = 1 
+    ///       AND o.OrderDate &gt; '2024-01-01'
+    ///     GROUP BY u.Name, o.OrderDate, p.ProductName
+    ///     HAVING COUNT(o.Id) &gt; 5";
+    /// 
+    /// var countSql = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+    /// // Result: "SELECT COUNT(*) FROM Users u INNER JOIN Orders o ON u.Id = o.UserId LEFT JOIN Products p ON o.ProductId = p.Id WHERE u.Active = 1 AND o.OrderDate > '2024-01-01' GROUP BY u.Name, o.OrderDate, p.ProductName HAVING COUNT(o.Id) > 5"
+    /// </code>
+    /// 
+    /// <para><strong>Non-SELECT Statement (returns null):</strong></para>
+    /// <code>
+    /// var updateSql = "UPDATE Users SET Active = 1";
+    /// var result = SqlInterrogator.ConvertSelectStatementToSelectCount(updateSql);
+    /// // Result: null
+    /// 
+    /// var noFromSql = "SELECT GETDATE()";
+    /// var result2 = SqlInterrogator.ConvertSelectStatementToSelectCount(noFromSql);
+    /// // Result: null
+    /// </code>
+    /// 
+    /// <para><strong>With SQL Parameters:</strong></para>
+    /// <code>
+    /// var sql = "SELECT * FROM Users WHERE Id = @userId AND Status = @status";
+    /// var countSql = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+    /// // Result: "SELECT COUNT(*) FROM Users WHERE Id = @userId AND Status = @status"
+    /// // Parameters are preserved and can be used with the count query
+    /// </code>
+    /// </example>
+    public static string? ConvertSelectStatementToSelectCount(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+      {
+  return null;
+   }
+
+   sql = PreprocessSql(sql);
+        // Only process SELECT statements
+        if (!IgnoreCaseRegex().IsMatch(sql))
+     {
+    return null;
+        }
+
+        if (!TryExtractSelectClause(sql, out var selectClause) || selectClause == null)
+        {
+   return null;
+        }
+
+   var countSelectClause = "SELECT COUNT(*)";
+        var fromIndex = sql.IndexOfIgnoreCase(" FROM ");
+      if (fromIndex < 0)
+        {
+            return null;
+ }
+
+        var fromAndBeyond = sql[fromIndex..];
+        return countSelectClause + fromAndBeyond;
     }
 }

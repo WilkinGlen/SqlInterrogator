@@ -860,4 +860,9 @@ public static partial class SqlInterrogator
 
         return result;
     }
+
+    public static int IndexOfIgnoreCase(this string source, string value)
+    {
+        return source.IndexOf(value, StringComparison.OrdinalIgnoreCase);
+    }
 }
