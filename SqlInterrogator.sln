@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlUrlParameteriserService"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlUrlParameteriserServiceTest", "SqlUrlParameteriserServiceTest\SqlUrlParameteriserServiceTest.csproj", "{DA3EC5BB-518D-4684-9CA2-9E0D1DF5491D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorApp1", "BlazorApp1\BlazorApp1.csproj", "{61F1DAB7-2D67-43BA-B1FC-C63A1CF3A84C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{DA3EC5BB-518D-4684-9CA2-9E0D1DF5491D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DA3EC5BB-518D-4684-9CA2-9E0D1DF5491D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DA3EC5BB-518D-4684-9CA2-9E0D1DF5491D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61F1DAB7-2D67-43BA-B1FC-C63A1CF3A84C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61F1DAB7-2D67-43BA-B1FC-C63A1CF3A84C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61F1DAB7-2D67-43BA-B1FC-C63A1CF3A84C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61F1DAB7-2D67-43BA-B1FC-C63A1CF3A84C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -212,7 +212,7 @@ public static class SqlUrlParameteriser
 
             // Check if this is a complete parameter (not part of a longer name)
             var endIndex = index + parameter.Length;
-            var isCompleteParameter = endIndex >= result.Length || !char.IsLetterOrDigit(result[endIndex]) && result[endIndex] != '_';
+            var isCompleteParameter = endIndex >= result.Length || (!char.IsLetterOrDigit(result[endIndex]) && result[endIndex] != '_');
 
             if (isCompleteParameter)
             {

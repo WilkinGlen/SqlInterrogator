@@ -187,7 +187,7 @@ public static partial class SqlInterrogator
     /// <summary>
     /// Extracts column-value pairs from WHERE clause conditions in a SQL statement.
     /// </summary>
-    /// <param name="sql">The SQL statement to analyze.</param>
+    /// <param name="sql">The SQL statement to analyse.</param>
     /// <returns>
     /// A list of tuples containing:
     /// <list type="bullet">
@@ -291,7 +291,7 @@ public static partial class SqlInterrogator
     /// </summary>
     /// <param name="sql">The SQL SELECT statement to convert.</param>
     /// <returns>
-    /// A new SQL statement with the SELECT clause replaced by "SELECT COUNT(*)" and all other clauses
+    /// A new SQL statement with the SELECT clause replaced with "SELECT COUNT(*)" and all other clauses
     /// (FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY) preserved. Returns null if the input is not
     /// a valid SELECT statement or if it lacks a FROM clause.
     /// </returns>
@@ -301,7 +301,7 @@ public static partial class SqlInterrogator
     /// <para>The method:</para>
     /// <list type="bullet">
     /// <item>Validates the input is a SELECT statement (returns null for UPDATE, INSERT, DELETE)</item>
-    /// <item>Preprocesses SQL to remove comments, CTEs, and USE statements</item>
+    /// <item>Pre-processes SQL to remove comments, CTEs, and USE statements</item>
     /// <item>Replaces any SELECT clause (SELECT *, columns, functions, DISTINCT, TOP) with "SELECT COUNT(*)"</item>
     /// <item>Preserves all clauses after FROM: WHERE, JOIN, GROUP BY, HAVING, ORDER BY, OFFSET/FETCH</item>
     /// <item>Maintains table aliases, hints (NOLOCK), and qualified table names</item>
@@ -317,7 +317,7 @@ public static partial class SqlInterrogator
     /// <para>Limitations:</para>
     /// <list type="bullet">
     /// <item>ORDER BY clauses are preserved but have no effect on COUNT (SQL is still valid)</item>
-    /// <item>DISTINCT and TOP keywords are removed during preprocessing</item>
+    /// <item>DISTINCT and TOP keywords are removed during pre-processing</item>
     /// <item>Subqueries in SELECT clause are removed (only outer query is converted)</item>
     /// </list>
     /// </remarks>
@@ -449,7 +449,7 @@ public static partial class SqlInterrogator
     /// <para>Limitations:</para>
     /// <list type="bullet">
     /// <item>TOP without ORDER BY returns arbitrary rows (non-deterministic)</item>
-    /// <item>DISTINCT keyword is removed during preprocessing</item>
+    /// <item>DISTINCT keyword is removed during pre-processing</item>
     /// <item>TOP PERCENT syntax is not supported (only TOP N)</item>
     /// <item>Existing OFFSET/FETCH clauses are preserved but may conflict with TOP</item>
     /// </list>
@@ -561,5 +561,378 @@ public static partial class SqlInterrogator
 
         var fromAndBeyond = sql[fromIndex..];
         return topSelectClause + fromAndBeyond;
+    }
+
+    /// <summary>
+    /// Converts a SELECT statement to a SELECT DISTINCT statement while preserving all other clauses.
+    /// </summary>
+    /// <param name="sql">The SQL SELECT statement to convert.</param>
+    /// <returns>
+    /// A new SQL statement with the SELECT clause replaced by "SELECT DISTINCT" and all other clauses
+    /// (FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY) preserved. Returns null if the input is not
+    /// a valid SELECT statement or if it lacks a FROM clause.
+    /// </returns>
+    /// <remarks>
+    /// <para>This method is useful for removing duplicate rows from query results, commonly needed for
+    /// data analysis, reporting, and ensuring unique result sets.</para>
+    /// <para>The method:</para>
+    /// <list type="bullet">
+    /// <item>Validates the input is a SELECT statement (returns null for UPDATE, INSERT, DELETE)</item>
+    /// <item>Preprocesses SQL to remove comments, CTEs, and USE statements</item>
+    /// <item>Replaces any SELECT clause with "SELECT DISTINCT" (removes existing DISTINCT if present)</item>
+    /// <item>Preserves all clauses after FROM: WHERE, JOIN, GROUP BY, HAVING, ORDER BY, OFFSET/FETCH</item>
+    /// <item>Maintains table aliases, hints (NOLOCK), and qualified table names</item>
+    /// <item>Returns null if no FROM clause exists (e.g., SELECT GETDATE())</item>
+    /// <item>Existing DISTINCT keywords are handled during pre-processing</item>
+    /// </list>
+    /// <para>Common use cases:</para>
+    /// <list type="bullet">
+    /// <item>Remove duplicate rows from result sets</item>
+    /// <item>Get unique values for reporting and analysis</item>
+    /// <item>Data quality: Identify distinct combinations of columns</item>
+    /// <item>Lookup lists: Generate unique dropdown options</item>
+    /// <item>Set operations: Simulate UNION behaviour for single queries</item>
+    /// </list>
+    /// <para>Limitations:</para>
+    /// <list type="bullet">
+    /// <item>DISTINCT applies to all columns in SELECT (cannot select distinct on specific columns)</item>
+    /// <item>Can impact performance on large result sets</item>
+    /// <item>Existing TOP clauses are removed during pre-processing</item>
+    /// <item>May not preserve original row order without explicit ORDER BY</item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <para><strong>Basic Conversion:</strong></para>
+    /// <code>
+    /// var sql = "SELECT Name, Email FROM Users WHERE Active = 1";
+    /// var distinctSql = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
+    /// // Result: "SELECT DISTINCT Name, Email FROM Users WHERE Active = 1"
+    /// </code>
+    /// 
+    /// <para><strong>Remove Duplicates from JOIN:</strong></para>
+    /// <code>
+    /// var sql = @"
+    ///     SELECT u.Name, u.Email
+    ///     FROM Users u
+    ///     INNER JOIN Orders o ON u.Id = o.UserId
+    ///     WHERE o.OrderDate &gt; '2024-01-01'";
+    /// 
+    /// var distinctSql = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
+    /// // Result: "SELECT DISTINCT u.Name, u.Email FROM Users u INNER JOIN Orders o ON u.Id = o.UserId WHERE o.OrderDate > '2024-01-01'"
+    /// // Returns unique users even if they have multiple orders
+    /// </code>
+    /// 
+    /// <para><strong>Unique Values for Dropdown:</strong></para>
+    /// <code>
+    /// var sql = "SELECT Country FROM Customers ORDER BY Country";
+    /// var distinctSql = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
+    /// // Result: "SELECT DISTINCT Country FROM Customers ORDER BY Country"
+    /// // Returns unique list of countries for dropdown
+    /// </code>
+    /// 
+    /// <para><strong>Already DISTINCT (idempotent):</strong></para>
+    /// <code>
+    /// var sql = "SELECT DISTINCT Category FROM Products";
+    /// var distinctSql = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
+    /// // Result: "SELECT DISTINCT Category FROM Products"
+    /// // Existing DISTINCT is handled correctly
+    /// </code>
+    /// 
+    /// <para><strong>Complex Query with Multiple Columns:</strong></para>
+    /// <code>
+    /// var sql = @"
+    ///     SELECT p.Category, p.Supplier, p.Country
+    ///     FROM Products p
+    ///     WHERE p.Discontinued = 0
+    ///     ORDER BY p.Category, p.Supplier";
+    /// 
+    /// var distinctSql = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
+    /// // Result: "SELECT DISTINCT p.Category, p.Supplier, p.Country FROM Products p WHERE p.Discontinued = 0 ORDER BY p.Category, p.Supplier"
+    /// // Returns unique combinations of Category, Supplier, and Country
+    /// </code>
+    /// 
+    /// <para><strong>With Aliases and Expressions:</strong></para>
+    /// <code>
+    /// var sql = "SELECT YEAR(OrderDate) AS OrderYear, Status FROM Orders WHERE Status IN (1,2,3)";
+    /// var distinctSql = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
+    /// // Result: "SELECT DISTINCT YEAR(OrderDate) AS OrderYear, Status FROM Orders WHERE Status IN (1,2,3)"
+    /// // Preserves column aliases and expressions
+    /// </code>
+    /// 
+    /// <para><strong>Invalid Input (returns null):</strong></para>
+    /// <code>
+    /// var updateSql = "UPDATE Users SET Active = 1";
+    /// var result = SqlInterrogator.ConvertSelectStatementToSelectDistinct(updateSql);
+    /// // Result: null
+    /// 
+    /// var noFromSql = "SELECT GETDATE()";
+    /// var result2 = SqlInterrogator.ConvertSelectStatementToSelectDistinct(noFromSql);
+    /// // Result: null
+    /// </code>
+    /// 
+    /// <para><strong>With SQL Parameters:</strong></para>
+    /// <code>
+    /// var sql = "SELECT Status, Priority FROM Tasks WHERE AssignedTo = @userId";
+    /// var distinctSql = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
+    /// // Result: "SELECT DISTINCT Status, Priority FROM Tasks WHERE AssignedTo = @userId"
+    /// // Parameters are preserved and can be used with the DISTINCT query
+    /// </code>
+    /// 
+    /// <para><strong>Data Quality Analysis:</strong></para>
+    /// <code>
+    /// var sql = "SELECT Email FROM Users";
+    /// var distinctSql = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
+    /// // Result: "SELECT DISTINCT Email FROM Users"
+    /// // Use to check for duplicate email addresses
+    /// 
+    /// // Compare counts to find duplicates:
+    /// // var totalCount = ExecuteScalar("SELECT COUNT(*) FROM Users");
+    /// // var uniqueCount = ExecuteScalar(distinctSql);
+    /// // if (totalCount != uniqueCount) { /* duplicates exist */ }
+    /// </code>
+    /// </example>
+    public static string? ConvertSelectStatementToSelectDistinct(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            return null;
+        }
+
+        sql = PreprocessSql(sql);
+
+        // Only process SELECT statements
+        if (!IgnoreCaseRegex().IsMatch(sql))
+        {
+            return null;
+        }
+
+        if (!TryExtractSelectClause(sql, out var selectClause) || selectClause == null)
+        {
+            return null;
+        }
+
+        var fromIndex = sql.IndexOfIgnoreCase(" FROM ");
+        if (fromIndex < 0)
+        {
+            return null;
+        }
+
+        // Get everything from SELECT to FROM (excluding SELECT keyword)
+        // Note: TryExtractSelectClause already removes DISTINCT/TOP keywords from selectClause
+        var selectToFrom = selectClause.Trim();
+
+        var fromAndBeyond = sql[fromIndex..];
+
+        return $"SELECT DISTINCT {selectToFrom}{fromAndBeyond}";
+    }
+
+    /// <summary>
+    /// Converts a SELECT statement to include or replace an ORDER BY clause while preserving all other clauses including pagination.
+    /// </summary>
+    /// <param name="sql">The SQL SELECT statement to convert.</param>
+    /// <param name="orderByClause">The ORDER BY clause to add or replace (without the "ORDER BY" keyword).</param>
+    /// <returns>
+    /// A new SQL statement with the ORDER BY clause added or replaced, preserving all other clauses
+    /// (SELECT, FROM, WHERE, JOIN, GROUP BY, HAVING, OFFSET/FETCH). Returns null if the input is not a valid SELECT statement,
+    /// if it lacks a FROM clause, or if the orderByClause is null or empty.
+    /// </returns>
+    /// <remarks>
+    /// <para>This method is useful for dynamically changing sort order in queries, commonly needed for
+    /// user-driven sorting, reporting, and data grid scenarios.</para>
+    /// <para>The method:</para>
+    /// <list type="bullet">
+    /// <item>Validates the input is a SELECT statement (returns null for UPDATE, INSERT, DELETE)</item>
+    /// <item>Validates that orderByClause is not null or empty</item>
+    /// <item>Preprocesses SQL to remove comments, CTEs, and USE statements</item>
+    /// <item>Removes any existing ORDER BY clause</item>
+    /// <item>Appends the new ORDER BY clause</item>
+    /// <item>Preserves OFFSET/FETCH pagination clauses (they are re-added after the new ORDER BY)</item>
+    /// <item>Preserves all other clauses: SELECT, FROM, WHERE, JOIN, GROUP BY, HAVING</item>
+    /// <item>Maintains table aliases, hints (NOLOCK), and qualified table names</item>
+    /// <item>Returns null if no FROM clause exists (e.g., SELECT GETDATE())</item>
+    /// </list>
+    /// <para>Common use cases:</para>
+    /// <list type="bullet">
+    /// <item>Dynamic sorting: Change sort column and direction based on user input</item>
+    /// <item>Data grids: Implement column header sorting while maintaining pagination</item>
+    /// <item>Reporting: Generate reports with different sort orders</item>
+    /// <item>API endpoints: Support query string sort parameters</item>
+    /// <item>Default ordering: Add ORDER BY to queries that lack it</item>
+    /// </list>
+    /// <para>Limitations:</para>
+    /// <list type="bullet">
+    /// <item>The orderByClause parameter should NOT include "ORDER BY" keyword</item>
+    /// <item>Column names in orderByClause are not validated</item>
+    /// <item>Complex ORDER BY expressions (CASE, functions) are supported but not validated</item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <para><strong>Basic Usage:</strong></para>
+    /// <code>
+    /// var sql = "SELECT Name, Email FROM Users WHERE Active = 1";
+    /// var orderedSql = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(sql, "Name ASC");
+    /// // Result: "SELECT Name, Email FROM Users WHERE Active = 1 ORDER BY Name ASC"
+    /// </code>
+    /// 
+    /// <para><strong>Replace Existing ORDER BY:</strong></para>
+    /// <code>
+    /// var sql = "SELECT Name, Email FROM Users ORDER BY Name ASC";
+    /// var orderedSql = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(sql, "Email DESC");
+    /// // Result: "SELECT Name, Email FROM Users ORDER BY Email DESC"
+    /// </code>
+    /// 
+    /// <para><strong>Preserve Pagination:</strong></para>
+    /// <code>
+    /// var sql = "SELECT * FROM Users ORDER BY Name ASC OFFSET 10 ROWS FETCH NEXT 20 ROWS ONLY";
+    /// var orderedSql = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(sql, "Email DESC");
+    /// // Result: "SELECT * FROM Users ORDER BY Email DESC OFFSET 10 ROWS FETCH NEXT 20 ROWS ONLY"
+    /// // Pagination is preserved when changing sort order
+    /// </code>
+    /// 
+    /// <para><strong>Multiple Columns:</strong></para>
+    /// <code>
+    /// var sql = "SELECT * FROM Products WHERE Active = 1";
+    /// var orderedSql = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(sql, "Category ASC, Price DESC");
+    /// // Result: "SELECT * FROM Products WHERE Active = 1 ORDER BY Category ASC, Price DESC"
+    /// </code>
+    /// 
+    /// <para><strong>With Qualified Column Names:</strong></para>
+    /// <code>
+    /// var sql = "SELECT u.Name, o.OrderDate FROM Users u JOIN Orders o ON u.Id = o.UserId";
+    /// var orderedSql = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(sql, "o.OrderDate DESC, u.Name ASC");
+    /// // Result: "SELECT u.Name, o.OrderDate FROM Users u JOIN Orders o ON u.Id = o.UserId ORDER BY o.OrderDate DESC, u.Name ASC"
+    /// </code>
+    /// 
+    /// <para><strong>Data Grid Sorting with Pagination:</strong></para>
+    /// <code>
+    /// // User changes sort column while on page 2
+    /// var sql = "SELECT * FROM Users WHERE Active = 1 ORDER BY Name ASC OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY";
+    /// var orderedSql = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(sql, "Email DESC");
+    /// // Result: "SELECT * FROM Users WHERE Active = 1 ORDER BY Email DESC OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY"
+    /// // Still on page 2, but now sorted by Email
+    /// </code>
+    /// 
+    /// <para><strong>With GROUP BY:</strong></para>
+    /// <code>
+    /// var sql = "SELECT Category, COUNT(*) AS Total FROM Products GROUP BY Category";
+    /// var orderedSql = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(sql, "Total DESC");
+    /// // Result: "SELECT Category, COUNT(*) AS Total FROM Products GROUP BY Category ORDER BY Total DESC"
+    /// </code>
+    /// 
+    /// <para><strong>Dynamic Sorting (User Input):</strong></para>
+    /// <code>
+    /// var sql = "SELECT * FROM Users WHERE Active = 1";
+    /// var sortColumn = "Name"; // From user input
+    /// var sortDirection = "DESC"; // From user input
+    /// var orderBy = $"{sortColumn} {sortDirection}";
+    /// var orderedSql = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(sql, orderBy);
+    /// // Result: "SELECT * FROM Users WHERE Active = 1 ORDER BY Name DESC"
+    /// </code>
+    /// 
+    /// <para><strong>With Complex Expression:</strong></para>
+    /// <code>
+    /// var sql = "SELECT Name, Price FROM Products";
+    /// var orderedSql = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(sql, "CASE WHEN Price > 100 THEN 1 ELSE 2 END, Name");
+    /// // Result: "SELECT Name, Price FROM Products ORDER BY CASE WHEN Price > 100 THEN 1 ELSE 2 END, Name"
+    /// </code>
+    /// 
+    /// <para><strong>Invalid Input (returns null):</strong></para>
+    /// <code>
+    /// var updateSql = "UPDATE Users SET Active = 1";
+    /// var result = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(updateSql, "Name");
+    /// // Result: null
+    /// 
+    /// var noFromSql = "SELECT GETDATE()";
+    /// var result2 = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(noFromSql, "Name");
+    /// // Result: null
+    /// 
+    /// var emptyOrderBy = SqlInterrogator.ConvertSelectStatementToSelectOrderBy("SELECT * FROM Users", "");
+    /// // Result: null (orderByClause cannot be empty)
+    /// </code>
+    /// 
+    /// <para><strong>With SQL Parameters:</strong></para>
+    /// <code>
+    /// var sql = "SELECT * FROM Users WHERE Status = @status";
+    /// var orderedSql = SqlInterrogator.ConvertSelectStatementToSelectOrderBy(sql, "CreatedDate DESC");
+    /// // Result: "SELECT * FROM Users WHERE Status = @status ORDER BY CreatedDate DESC"
+    /// // Parameters are preserved
+    /// </code>
+    /// </example>
+    public static string? ConvertSelectStatementToSelectOrderBy(string sql, string orderByClause)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(orderByClause))
+        {
+            return null;
+        }
+
+        sql = PreprocessSql(sql);
+
+        // Only process SELECT statements
+        if (!IgnoreCaseRegex().IsMatch(sql))
+        {
+            return null;
+        }
+
+        if (!TryExtractSelectClause(sql, out var selectClause) || selectClause == null)
+        {
+            return null;
+        }
+
+        var fromIndex = sql.IndexOfIgnoreCase(" FROM ");
+        if (fromIndex < 0)
+        {
+            return null;
+        }
+
+        // Extract pagination clause before removing ORDER BY
+        var paginationClause = ExtractPaginationClause(sql);
+
+        // Remove existing ORDER BY and pagination
+        var sqlWithoutOrderBy = RemoveOrderByAndPagination(sql);
+
+        // Build new query with ORDER BY
+        var result = $"{sqlWithoutOrderBy} ORDER BY {orderByClause.Trim()}";
+
+        // Re-add pagination if it existed
+        if (!string.IsNullOrEmpty(paginationClause))
+        {
+            result = $"{result} {paginationClause}";
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Extracts the OFFSET/FETCH pagination clause from SQL.
+    /// </summary>
+    /// <param name="sql">The SQL statement to process.</param>
+    /// <returns>The pagination clause (OFFSET ... FETCH ...) or null if no pagination exists.</returns>
+    private static string? ExtractPaginationClause(string sql)
+    {
+        var offsetIndex = sql.IndexOfIgnoreCase(" OFFSET ");
+        return offsetIndex < 0 ? null : sql[offsetIndex..].Trim();
+    }
+
+    /// <summary>
+    /// Removes ORDER BY and pagination (OFFSET/FETCH) clauses from SQL.
+    /// </summary>
+    /// <param name="sql">The SQL statement to process.</param>
+    /// <returns>The SQL statement without ORDER BY or pagination clauses.</returns>
+    private static string RemoveOrderByAndPagination(string sql)
+    {
+        // Find ORDER BY position
+        var orderByIndex = sql.IndexOfIgnoreCase(" ORDER BY ");
+        if (orderByIndex < 0)
+        {
+            return sql; // No ORDER BY to remove
+        }
+
+        // Return everything before ORDER BY
+        return sql[..orderByIndex].TrimEnd();
     }
 }

@@ -829,7 +829,7 @@ public class ParameteriseSqlFromUrl_Should
         // Note: "1,2,3" might be parsed as numeric in some cultures, so we check for either format
         var hasQuotedFormat = result.Contains("CategoryId IN ('1,2,3')");
         var hasUnquotedFormat = result.Contains("CategoryId IN (1,2,3)");
-        (hasQuotedFormat || hasUnquotedFormat).Should().BeTrue("CategoryId should be replaced");
+        _ = (hasQuotedFormat || hasUnquotedFormat).Should().BeTrue("CategoryId should be replaced");
         _ = result.Should().Contain("LastRestocked < '2024-01-01'");
     }
 
