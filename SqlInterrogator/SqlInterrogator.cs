@@ -302,7 +302,9 @@ public static partial class SqlInterrogator
     /// <list type="bullet">
     /// <item>Validates the input is a SELECT statement (returns null for UPDATE, INSERT, DELETE)</item>
     /// <item>Pre-processes SQL to remove comments, CTEs, and USE statements</item>
-    /// <item>Replaces any SELECT clause (SELECT *, columns, functions, DISTINCT, TOP) with "SELECT COUNT(*)"</item>
+    /// <item>Detects if original query had DISTINCT keyword</item>
+    /// <item>For DISTINCT queries: Uses subquery approach to count distinct rows accurately</item>
+    /// <item>For non-DISTINCT queries: Replaces SELECT clause with "SELECT COUNT(*)"</item>
     /// <item>Preserves all clauses after FROM: WHERE, JOIN, GROUP BY, HAVING, ORDER BY, OFFSET/FETCH</item>
     /// <item>Maintains table aliases, hints (NOLOCK), and qualified table names</item>
     /// <item>Returns null if no FROM clause exists (e.g., SELECT GETDATE())</item>
@@ -317,7 +319,7 @@ public static partial class SqlInterrogator
     /// <para>Limitations:</para>
     /// <list type="bullet">
     /// <item>ORDER BY clauses are preserved but have no effect on COUNT (SQL is still valid)</item>
-    /// <item>DISTINCT and TOP keywords are removed during pre-processing</item>
+    /// <item>TOP keywords are removed during pre-processing</item>
     /// <item>Subqueries in SELECT clause are removed (only outer query is converted)</item>
     /// </list>
     /// </remarks>
@@ -327,6 +329,14 @@ public static partial class SqlInterrogator
     /// var sql = "SELECT Name, Email FROM Users WHERE Active = 1";
     /// var countSql = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
     /// // Result: "SELECT COUNT(*) FROM Users WHERE Active = 1"
+    /// </code>
+    /// 
+    /// <para><strong>DISTINCT Query (uses subquery):</strong></para>
+    /// <code>
+    /// var sql = "SELECT DISTINCT Name, Email FROM Users WHERE Active = 1";
+    /// var countSql = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+    /// // Result: "SELECT COUNT(*) FROM (SELECT DISTINCT Name, Email FROM Users WHERE Active = 1) AS DistinctCount"
+    /// // Correctly counts distinct Name/Email combinations
     /// </code>
     /// 
     /// <para><strong>Pagination Scenario:</strong></para>
@@ -391,7 +401,14 @@ public static partial class SqlInterrogator
             return null;
         }
 
+        // Check if original SQL has DISTINCT before preprocessing removes it
+        var hadDistinct = SelectDistinctRegex().IsMatch(sql);
+
+        // Store original SQL for DISTINCT case
+        var originalSql = sql;
+
         sql = PreprocessSql(sql);
+        
         // Only process SELECT statements
         if (!IgnoreCaseRegex().IsMatch(sql))
         {
@@ -403,13 +420,26 @@ public static partial class SqlInterrogator
             return null;
         }
 
-        var countSelectClause = "SELECT COUNT(*)";
         var fromIndex = sql.IndexOfIgnoreCase(" FROM ");
         if (fromIndex < 0)
         {
             return null;
         }
 
+        // If original query had DISTINCT, use subquery approach for accurate counting
+        if (hadDistinct)
+        {
+            // Remove comments, CTEs, USE statements but preserve DISTINCT
+            var cleanedSql = RemoveComments(originalSql);
+            cleanedSql = RemoveCTEs(cleanedSql);
+            cleanedSql = RemoveUseStatements(cleanedSql);
+            cleanedSql = cleanedSql.Trim();
+            
+            return $"SELECT COUNT(*) FROM ({cleanedSql}) AS DistinctCount";
+        }
+
+        // For non-DISTINCT queries, use simple replacement
+        var countSelectClause = "SELECT COUNT(*)";
         var fromAndBeyond = sql[fromIndex..];
         return countSelectClause + fromAndBeyond;
     }
@@ -905,6 +935,37 @@ public static partial class SqlInterrogator
         }
 
         return result;
+    }
+
+    public static string? ExtractOrderByClause(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            return null;
+        }
+
+        sql = PreprocessSql(sql);
+        // Only process SELECT statements
+        if (!IgnoreCaseRegex().IsMatch(sql))
+        {
+            return null;
+        }
+
+        var orderByIndex = sql.IndexOfIgnoreCase(" ORDER BY ");
+        if (orderByIndex < 0)
+        {
+            return null; // No ORDER BY clause found
+        }
+        // Extract ORDER BY clause
+        var orderByClause = sql[orderByIndex..].Trim();
+        // Remove pagination from ORDER BY clause if present
+        var paginationIndex = orderByClause.IndexOfIgnoreCase(" OFFSET ");
+        if (paginationIndex >= 0)
+        {
+            orderByClause = orderByClause[..paginationIndex].Trim();
+        }
+
+        return orderByClause;
     }
 
     /// <summary>

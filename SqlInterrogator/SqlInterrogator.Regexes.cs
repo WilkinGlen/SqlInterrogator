@@ -113,6 +113,10 @@ public static partial class SqlInterrogator
     [GeneratedRegex(@"((?:\[[^\]]+\]|""[^""]+""|\w+)(?:\.(?:\[[^\]]+\]|""[^""]+""|\w+))*)\s*(>=|<=|!=|<>|>|<|=|LIKE|IN|IS\s+NOT|IS|NOT\s+IN|NOT\s+LIKE)\s*((?:\[[^\]]+\]|""[^""]+""|\w+)(?:\.(?:\[[^\]]+\]|""[^""]+""|\w+))*|'[^']*'|\([^)]+\)|@\w+)?", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex WhereConditionRegex();
 
+    /// <summary>Matches SELECT DISTINCT pattern to detect distinct queries.</summary>
+    [GeneratedRegex(@"\bSELECT\s+DISTINCT\b", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
+    private static partial Regex SelectDistinctRegex();
+
     // Bracketed three-part identifier [db].[schema].[table]
     // Example: [MyDB].[dbo].[Users], [DB1].[sys].[tables]
     // Negative lookahead (?!\.\[) ensures we don't match part of a four-part identifier

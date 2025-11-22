@@ -321,7 +321,106 @@ public class ConvertSelectStatementToSelectCount_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
 
-        _ = result.Should().Be("SELECT COUNT(*) FROM Users");
+        _ = result.Should().Be("SELECT COUNT(*) FROM (SELECT DISTINCT Name, Email FROM Users) AS DistinctCount");
+    }
+
+    [Fact]
+    public void ConvertToSelectCount_WhenDistinctWithWhere()
+    {
+        var sql = "SELECT DISTINCT Name, Email FROM Users WHERE Active = 1";
+
+        var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+
+        _ = result.Should().Be("SELECT COUNT(*) FROM (SELECT DISTINCT Name, Email FROM Users WHERE Active = 1) AS DistinctCount");
+    }
+
+    [Fact]
+    public void ConvertToSelectCount_WhenDistinctWithJoin()
+    {
+        var sql = "SELECT DISTINCT u.Name, u.Email FROM Users u INNER JOIN Orders o ON u.Id = o.UserId WHERE o.Status = 'Active'";
+
+        var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+
+        _ = result.Should().Be("SELECT COUNT(*) FROM (SELECT DISTINCT u.Name, u.Email FROM Users u INNER JOIN Orders o ON u.Id = o.UserId WHERE o.Status = 'Active') AS DistinctCount");
+    }
+
+    [Fact]
+    public void ConvertToSelectCount_WhenDistinctWithOrderBy()
+    {
+        var sql = "SELECT DISTINCT Category FROM Products ORDER BY Category";
+
+        var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+
+        _ = result.Should().Be("SELECT COUNT(*) FROM (SELECT DISTINCT Category FROM Products ORDER BY Category) AS DistinctCount");
+    }
+
+    [Fact]
+    public void ConvertToSelectCount_WhenDistinctSingleColumn()
+    {
+        var sql = "SELECT DISTINCT Email FROM Users";
+
+        var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+
+        _ = result.Should().Be("SELECT COUNT(*) FROM (SELECT DISTINCT Email FROM Users) AS DistinctCount");
+    }
+
+    [Fact]
+    public void ConvertToSelectCount_WhenDistinctLowercase()
+    {
+        var sql = "select distinct name, email from users where active = 1";
+
+        var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+
+        _ = result.Should().Be("SELECT COUNT(*) FROM (select distinct name, email from users where active = 1) AS DistinctCount");
+    }
+
+    [Fact]
+    public void ConvertToSelectCount_WhenDistinctWithComplexQuery()
+    {
+        var sql = @"SELECT DISTINCT u.Department, u.Role 
+                    FROM Users u 
+                    LEFT JOIN Orders o ON u.Id = o.UserId 
+                    WHERE u.Active = 1 
+                      AND o.OrderDate > '2024-01-01'
+                    ORDER BY u.Department, u.Role";
+
+        var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+
+        _ = result.Should().Contain("SELECT COUNT(*) FROM (SELECT DISTINCT u.Department, u.Role");
+        _ = result.Should().Contain("FROM Users u");
+        _ = result.Should().Contain("LEFT JOIN Orders o ON u.Id = o.UserId");
+        _ = result.Should().Contain("WHERE u.Active = 1");
+        _ = result.Should().Contain("ORDER BY u.Department, u.Role) AS DistinctCount");
+    }
+
+    [Fact]
+    public void ConvertToSelectCount_WhenDistinctStar()
+    {
+        var sql = "SELECT DISTINCT * FROM Users";
+
+        var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+
+        _ = result.Should().Be("SELECT COUNT(*) FROM (SELECT DISTINCT * FROM Users) AS DistinctCount");
+    }
+
+    [Fact]
+    public void ConvertToSelectCount_WhenDistinctStarWithWhere()
+    {
+        var sql = "SELECT DISTINCT * FROM Users WHERE Active = 1";
+
+        var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+
+        _ = result.Should().Be("SELECT COUNT(*) FROM (SELECT DISTINCT * FROM Users WHERE Active = 1) AS DistinctCount");
+    }
+
+    [Fact]
+    public void ConvertToSelectCount_WhenDistinctStarWithJoin()
+    {
+        var sql = "SELECT DISTINCT * FROM Users u INNER JOIN Orders o ON u.Id = o.UserId WHERE o.Status = 'Active'";
+
+        var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
+
+        _ = result.Should().Be("SELECT COUNT(*) FROM (SELECT DISTINCT * FROM Users u INNER JOIN Orders o ON u.Id = o.UserId WHERE o.Status = 'Active') AS DistinctCount");
     }
 
     [Fact]
@@ -645,12 +744,13 @@ public class ConvertSelectStatementToSelectCount_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectCount(sql);
 
-        _ = result.Should().Contain("SELECT COUNT(*) FROM Users u");
+        _ = result.Should().Contain("SELECT COUNT(*) FROM (SELECT DISTINCT");
+        _ = result.Should().Contain("FROM Users u");
         _ = result.Should().Contain("LEFT JOIN Orders o ON u.Id = o.UserId");
         _ = result.Should().Contain("WHERE u.Active = 1");
         _ = result.Should().Contain("GROUP BY u.Name, u.Email");
         _ = result.Should().Contain("HAVING COUNT(o.Id) > 5");
-        _ = result.Should().Contain("ORDER BY u.Name ASC");
+        _ = result.Should().Contain("ORDER BY u.Name ASC) AS DistinctCount");
     }
 
     [Fact]
