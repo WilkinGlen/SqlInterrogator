@@ -937,6 +937,78 @@ public static partial class SqlInterrogator
         return result;
     }
 
+    /// <summary>
+    /// Extracts the TOP number from a SELECT TOP N statement.
+    /// </summary>
+    /// <param name="sql">The SQL SELECT statement to analyse.</param>
+    /// <returns>
+    /// The numeric value from the TOP clause. Returns 0 if the SQL is not a SELECT statement,
+    /// contains no TOP clause, or if the TOP value cannot be parsed as an integer.
+    /// </returns>
+    /// <remarks>
+    /// <para>This method extracts the numeric value from SQL Server TOP clauses:</para>
+    /// <list type="bullet">
+    /// <item>SELECT TOP 10 * FROM Users → Returns 10</item>
+    /// <item>SELECT TOP 100 Name FROM Users → Returns 100</item>
+    /// <item>SELECT * FROM Users → Returns 0 (no TOP clause)</item>
+    /// <item>SELECT DISTINCT TOP 50 Category FROM Products → Returns 50</item>
+    /// </list>
+    /// <para>The method:</para>
+    /// <list type="bullet">
+    /// <item>Only processes SELECT statements (returns 0 for UPDATE, INSERT, DELETE)</item>
+    /// <item>Preprocesses SQL to remove comments, CTEs, and USE statements</item>
+    /// <item>Handles DISTINCT keyword before TOP</item>
+    /// <item>Extracts only integer values (does not support TOP PERCENT)</item>
+    /// <item>Returns 0 if no TOP clause exists or if value is not numeric</item>
+    /// <item>Handles lowercase, uppercase, and mixed case keywords</item>
+    /// </list>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var sql1 = "SELECT TOP 10 * FROM Users";
+    /// var top1 = SqlInterrogator.ExtractTopNumber(sql1);
+    /// // Result: 10
+    /// 
+    /// var sql2 = "SELECT DISTINCT TOP 50 Category FROM Products";
+    /// var top2 = SqlInterrogator.ExtractTopNumber(sql2);
+    /// // Result: 50
+    /// 
+    /// var sql3 = "SELECT * FROM Users";
+    /// var top3 = SqlInterrogator.ExtractTopNumber(sql3);
+    /// // Result: 0 (no TOP clause)
+    /// 
+    /// var sql4 = "UPDATE Users SET Active = 1";
+    /// var top4 = SqlInterrogator.ExtractTopNumber(sql4);
+    /// // Result: 0 (not a SELECT statement)
+    /// </code>
+    /// </example>
+    public static int ExtractTopNumber(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            return 0;
+        }
+
+        sql = PreprocessSql(sql);
+
+        // Only process SELECT statements
+        if (!IgnoreCaseRegex().IsMatch(sql))
+        {
+            return 0;
+        }
+
+        // Match SELECT [DISTINCT] TOP N pattern
+        var topMatch = TopNumberRegex().Match(sql);
+        if (!topMatch.Success)
+        {
+            return 0;
+        }
+
+        // Extract the number from group 1
+        var topValue = topMatch.Groups[1].Value;
+        return int.TryParse(topValue, out var result) ? result : 0;
+    }
+
     public static string? ExtractOrderByClause(string sql)
     {
         if (string.IsNullOrWhiteSpace(sql))

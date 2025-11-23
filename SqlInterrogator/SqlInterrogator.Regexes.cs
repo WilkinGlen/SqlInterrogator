@@ -117,6 +117,10 @@ public static partial class SqlInterrogator
     [GeneratedRegex(@"\bSELECT\s+DISTINCT\b", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex SelectDistinctRegex();
 
+    /// <summary>Matches TOP N value in SELECT clause to extract the number.</summary>
+    [GeneratedRegex(@"^\s*SELECT\s+(?:DISTINCT\s+)?TOP\s+(\d+)", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
+    private static partial Regex TopNumberRegex();
+
     // Bracketed three-part identifier [db].[schema].[table]
     // Example: [MyDB].[dbo].[Users], [DB1].[sys].[tables]
     // Negative lookahead (?!\.\[) ensures we don't match part of a four-part identifier
