@@ -61,8 +61,8 @@ public static partial class SqlInterrogator
     [GeneratedRegex(@"SELECT\s+(.*?)\s+FROM", RegexOptions.IgnoreCase | RegexOptions.Singleline, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex SelectClauseRegex();
 
-    /// <summary>Matches DISTINCT, ALL, or TOP keywords in SELECT clause.</summary>
-    [GeneratedRegex(@"^\s*(?:DISTINCT|ALL|TOP\s+\d+)\s+", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
+    /// <summary>Matches DISTINCT, ALL, or TOP keywords in SELECT clause. Supports TOP with optional parentheses.</summary>
+    [GeneratedRegex(@"^\s*(?:DISTINCT|ALL|TOP\s*\(?\s*\d+\s*\)?)\s+", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex DistinctTopRegex();
 
     /// <summary>Matches SELECT * pattern.</summary>
@@ -117,8 +117,8 @@ public static partial class SqlInterrogator
     [GeneratedRegex(@"\bSELECT\s+DISTINCT\b", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex SelectDistinctRegex();
 
-    /// <summary>Matches TOP N value in SELECT clause to extract the number.</summary>
-    [GeneratedRegex(@"^\s*SELECT\s+(?:DISTINCT\s+)?TOP\s+(\d+)", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
+    /// <summary>Matches TOP N value in SELECT clause to extract the number. Supports TOP 123, TOP(123), and TOP (123) formats.</summary>
+    [GeneratedRegex(@"^\s*SELECT\s+(?:DISTINCT\s+)?TOP\s*\(?\s*(\d+)\s*\)?", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: RegexTimeoutMilliseconds)]
     private static partial Regex TopNumberRegex();
 
     // Bracketed three-part identifier [db].[schema].[table]

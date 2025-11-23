@@ -450,8 +450,8 @@ public static partial class SqlInterrogator
     /// <param name="sql">The SQL SELECT statement to convert.</param>
     /// <param name="top">The number of rows to return. Must be greater than 0.</param>
     /// <returns>
-    /// A new SQL statement with the SELECT clause replaced by "SELECT TOP N" and all other clauses
-    /// (FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY) preserved. Returns null if the input is not
+    /// A new SQL statement with TOP N added to the SELECT clause and all other clauses
+    /// (columns, FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY) preserved. Returns null if the input is not
     /// a valid SELECT statement, if it lacks a FROM clause, or if top is less than or equal to 0.
     /// </returns>
     /// <remarks>
@@ -462,7 +462,8 @@ public static partial class SqlInterrogator
     /// <item>Validates the input is a SELECT statement (returns null for UPDATE, INSERT, DELETE)</item>
     /// <item>Validates that top is greater than 0 (returns null if top &lt;= 0)</item>
     /// <item>Preprocesses SQL to remove comments, CTEs, and USE statements</item>
-    /// <item>Replaces any SELECT clause (SELECT *, columns, functions, DISTINCT, existing TOP) with "SELECT TOP N"</item>
+    /// <item>Adds or replaces TOP N in the SELECT clause while preserving selected columns</item>
+    /// <item>Preserves DISTINCT keyword if present</item>
     /// <item>Preserves all clauses after FROM: WHERE, JOIN, GROUP BY, HAVING, ORDER BY, OFFSET/FETCH</item>
     /// <item>Maintains table aliases, hints (NOLOCK), and qualified table names</item>
     /// <item>Returns null if no FROM clause exists (e.g., SELECT GETDATE())</item>
@@ -479,7 +480,6 @@ public static partial class SqlInterrogator
     /// <para>Limitations:</para>
     /// <list type="bullet">
     /// <item>TOP without ORDER BY returns arbitrary rows (non-deterministic)</item>
-    /// <item>DISTINCT keyword is removed during pre-processing</item>
     /// <item>TOP PERCENT syntax is not supported (only TOP N)</item>
     /// <item>Existing OFFSET/FETCH clauses are preserved but may conflict with TOP</item>
     /// </list>
@@ -532,7 +532,7 @@ public static partial class SqlInterrogator
     /// // Get sample of 1000 rows for analysis
     /// </code>
     /// 
-    /// <para><strong>Invalid Input (returns null):</strong></para>
+    /// <para><strong>Invalid Input (returns null):</para>
     /// <code>
     /// var updateSql = "UPDATE Users SET Active = 1";
     /// var result = SqlInterrogator.ConvertSelectStatementToSelectTop(updateSql, 10);
@@ -569,6 +569,9 @@ public static partial class SqlInterrogator
             return null;
         }
 
+        // Check if original SQL has DISTINCT before preprocessing removes it
+        var hadDistinct = SelectDistinctRegex().IsMatch(sql);
+
         sql = PreprocessSql(sql);
 
         // Only process SELECT statements
@@ -582,7 +585,8 @@ public static partial class SqlInterrogator
             return null;
         }
 
-        var topSelectClause = $"SELECT TOP {top}";
+        // Build SELECT TOP clause, preserving DISTINCT and columns if they existed
+        var topSelectClause = hadDistinct ? $"SELECT DISTINCT TOP {top} {selectClause.Trim()}" : $"SELECT TOP {top} {selectClause.Trim()}";
         var fromIndex = sql.IndexOfIgnoreCase(" FROM ");
         if (fromIndex < 0)
         {
@@ -598,7 +602,7 @@ public static partial class SqlInterrogator
     /// </summary>
     /// <param name="sql">The SQL SELECT statement to convert.</param>
     /// <returns>
-    /// A new SQL statement with the SELECT clause replaced by "SELECT DISTINCT" and all other clauses
+    /// A new SQL statement with the SELECT clause replaced with "SELECT DISTINCT" and all other clauses
     /// (FROM, WHERE, JOIN, GROUP BY, HAVING, ORDER BY) preserved. Returns null if the input is not
     /// a valid SELECT statement or if it lacks a FROM clause.
     /// </returns>
@@ -689,7 +693,7 @@ public static partial class SqlInterrogator
     /// // Preserves column aliases and expressions
     /// </code>
     /// 
-    /// <para><strong>Invalid Input (returns null):</strong></para>
+    /// <para><strong>Invalid Input (returns null):</para>
     /// <code>
     /// var updateSql = "UPDATE Users SET Active = 1";
     /// var result = SqlInterrogator.ConvertSelectStatementToSelectDistinct(updateSql);
@@ -728,6 +732,14 @@ public static partial class SqlInterrogator
             return null;
         }
 
+        // Check if original SQL already has DISTINCT
+        var hadDistinct = SelectDistinctRegex().IsMatch(sql);
+        
+        // Check if original SQL has TOP before preprocessing removes it
+        var topMatch = TopNumberRegex().Match(sql);
+        var hadTop = topMatch.Success;
+        var topNumber = hadTop ? topMatch.Groups[1].Value : null;
+
         sql = PreprocessSql(sql);
 
         // Only process SELECT statements
@@ -748,10 +760,25 @@ public static partial class SqlInterrogator
         }
 
         // Get everything from SELECT to FROM (excluding SELECT keyword)
-        // Note: TryExtractSelectClause already removes DISTINCT/TOP keywords from selectClause
+        // Note: TryExtractSelectClause removes DISTINCT/ALL/TOP but only the FIRST one
+        // So "DISTINCT TOP 50" becomes "TOP 50" after processing
         var selectToFrom = selectClause.Trim();
 
         var fromAndBeyond = sql[fromIndex..];
+
+        // If already had DISTINCT and TOP, the selectClause will still contain "TOP N"
+        // because the regex only removes the first keyword (DISTINCT)
+        if (hadDistinct && hadTop)
+        {
+            // selectClause already has "TOP N ...", just add DISTINCT back
+            return $"SELECT DISTINCT {selectToFrom}{fromAndBeyond}";
+        }
+        
+        // Build SELECT clause preserving TOP if it existed (but not DISTINCT)
+        if (hadTop && topNumber != null)
+        {
+            return $"SELECT DISTINCT TOP {topNumber} {selectToFrom}{fromAndBeyond}";
+        }
 
         return $"SELECT DISTINCT {selectToFrom}{fromAndBeyond}";
     }
@@ -946,18 +973,20 @@ public static partial class SqlInterrogator
     /// contains no TOP clause, or if the TOP value cannot be parsed as an integer.
     /// </returns>
     /// <remarks>
-    /// <para>This method extracts the numeric value from SQL Server TOP clauses:</para>
+    /// <para>This method extracts the numeric value from SQL Server TOP clauses in various formats:</para>
     /// <list type="bullet">
     /// <item>SELECT TOP 10 * FROM Users → Returns 10</item>
-    /// <item>SELECT TOP 100 Name FROM Users → Returns 100</item>
-    /// <item>SELECT * FROM Users → Returns 0 (no TOP clause)</item>
+    /// <item>SELECT TOP(100) Name FROM Users → Returns 100</item>
+    /// <item>SELECT TOP (50) * FROM Users → Returns 50</item>
     /// <item>SELECT DISTINCT TOP 50 Category FROM Products → Returns 50</item>
+    /// <item>SELECT * FROM Users → Returns 0 (no TOP clause)</item>
     /// </list>
     /// <para>The method:</para>
     /// <list type="bullet">
     /// <item>Only processes SELECT statements (returns 0 for UPDATE, INSERT, DELETE)</item>
     /// <item>Preprocesses SQL to remove comments, CTEs, and USE statements</item>
     /// <item>Handles DISTINCT keyword before TOP</item>
+    /// <item>Supports TOP with or without parentheses: TOP 10, TOP(10), TOP (10)</item>
     /// <item>Extracts only integer values (does not support TOP PERCENT)</item>
     /// <item>Returns 0 if no TOP clause exists or if value is not numeric</item>
     /// <item>Handles lowercase, uppercase, and mixed case keywords</item>
@@ -969,16 +998,20 @@ public static partial class SqlInterrogator
     /// var top1 = SqlInterrogator.ExtractTopNumber(sql1);
     /// // Result: 10
     /// 
-    /// var sql2 = "SELECT DISTINCT TOP 50 Category FROM Products";
+    /// var sql2 = "SELECT TOP(50) Category FROM Products";
     /// var top2 = SqlInterrogator.ExtractTopNumber(sql2);
     /// // Result: 50
     /// 
-    /// var sql3 = "SELECT * FROM Users";
+    /// var sql3 = "SELECT DISTINCT TOP (25) * FROM Orders";
     /// var top3 = SqlInterrogator.ExtractTopNumber(sql3);
+    /// // Result: 25
+    /// 
+    /// var sql4 = "SELECT * FROM Users";
+    /// var top4 = SqlInterrogator.ExtractTopNumber(sql4);
     /// // Result: 0 (no TOP clause)
     /// 
-    /// var sql4 = "UPDATE Users SET Active = 1";
-    /// var top4 = SqlInterrogator.ExtractTopNumber(sql4);
+    /// var sql5 = "UPDATE Users SET Active = 1";
+    /// var top5 = SqlInterrogator.ExtractTopNumber(sql5);
     /// // Result: 0 (not a SELECT statement)
     /// </code>
     /// </example>

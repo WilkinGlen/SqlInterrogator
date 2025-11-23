@@ -106,7 +106,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users");
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 5);
 
-        _ = result.Should().Be("SELECT TOP 5 FROM Users");
+        _ = result.Should().Be("SELECT TOP 5 Name, Email FROM Users");
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 1);
 
-        _ = result.Should().Be("SELECT TOP 1 FROM Users");
+        _ = result.Should().Be("SELECT TOP 1 * FROM Users");
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 999999);
 
-        _ = result.Should().Be("SELECT TOP 999999 FROM Users");
+        _ = result.Should().Be("SELECT TOP 999999 * FROM Users");
     }
 
     [Fact]
@@ -146,7 +146,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users u");
+        _ = result.Should().Be("SELECT TOP 10 u.Name, u.Email FROM Users u");
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users");
+        _ = result.Should().Be("SELECT TOP 10 [Name], [Email] FROM Users");
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users");
+        _ = result.Should().Be("SELECT TOP 10 Name AS FullName, Email AS EmailAddress FROM Users");
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users WHERE Active = 1");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users WHERE Active = 1");
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users WHERE Active = 1 AND CreatedDate > '2024-01-01'");
+        _ = result.Should().Be("SELECT TOP 10 Name, Email FROM Users WHERE Active = 1 AND CreatedDate > '2024-01-01'");
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users WHERE Id = @userId AND Status = @status");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users WHERE Id = @userId AND Status = @status");
     }
 
     [Fact]
@@ -206,7 +206,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users u INNER JOIN Orders o ON u.Id = o.UserId");
+        _ = result.Should().Be("SELECT TOP 10 u.Name, o.OrderDate FROM Users u INNER JOIN Orders o ON u.Id = o.UserId");
     }
 
     [Fact]
@@ -216,20 +216,20 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users u LEFT JOIN Orders o ON u.Id = o.UserId");
+        _ = result.Should().Be("SELECT TOP 10 u.Name, o.OrderDate FROM Users u LEFT JOIN Orders o ON u.Id = o.UserId");
     }
 
     [Fact]
     public void ConvertToSelectTop_WhenMultipleJoins()
     {
         var sql = @"SELECT u.Name, o.OrderDate, p.ProductName 
- FROM Users u 
- INNER JOIN Orders o ON u.Id = o.UserId
-          LEFT JOIN Products p ON o.ProductId = p.Id";
+                    FROM Users u 
+                    INNER JOIN Orders o ON u.Id = o.UserId
+                    LEFT JOIN Products p ON o.ProductId = p.Id";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Contain("SELECT TOP 10 FROM Users u");
+        _ = result.Should().Contain("SELECT TOP 10 u.Name, o.OrderDate, p.ProductName FROM Users u");
         _ = result.Should().Contain("INNER JOIN Orders o ON u.Id = o.UserId");
         _ = result.Should().Contain("LEFT JOIN Products p ON o.ProductId = p.Id");
     }
@@ -241,7 +241,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users u JOIN Orders o ON u.Id = o.UserId WHERE u.Active = 1");
+        _ = result.Should().Be("SELECT TOP 10 u.Name, o.OrderDate FROM Users u JOIN Orders o ON u.Id = o.UserId WHERE u.Active = 1");
     }
 
     [Fact]
@@ -251,7 +251,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users ORDER BY Name");
+        _ = result.Should().Be("SELECT TOP 10 Name, Email FROM Users ORDER BY Name");
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users ORDER BY Name ASC, CreatedDate DESC");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users ORDER BY Name ASC, CreatedDate DESC");
     }
 
     [Fact]
@@ -271,7 +271,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users WHERE Active = 1 ORDER BY Name");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users WHERE Active = 1 ORDER BY Name");
     }
 
     [Fact]
@@ -281,7 +281,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users GROUP BY Name");
+        _ = result.Should().Be("SELECT TOP 10 Name, COUNT(*) FROM Users GROUP BY Name");
     }
 
     [Fact]
@@ -291,7 +291,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users GROUP BY Name HAVING COUNT(*) > 1");
+        _ = result.Should().Be("SELECT TOP 10 Name, COUNT(*) FROM Users GROUP BY Name HAVING COUNT(*) > 1");
     }
 
     [Fact]
@@ -301,7 +301,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users WHERE Active = 1 GROUP BY Department HAVING COUNT(*) > 5");
+        _ = result.Should().Be("SELECT TOP 10 Department, COUNT(*) FROM Users WHERE Active = 1 GROUP BY Department HAVING COUNT(*) > 5");
     }
 
     [Fact]
@@ -311,7 +311,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users");
+        _ = result.Should().Be("SELECT DISTINCT TOP 10 Name, Email FROM Users");
     }
 
     [Fact]
@@ -321,7 +321,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users");
+        _ = result.Should().Be("SELECT TOP 10 Name, Email FROM Users");
     }
 
     [Fact]
@@ -331,7 +331,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 5);
 
-        _ = result.Should().Be("SELECT TOP 5 FROM Users ORDER BY CreatedDate DESC");
+        _ = result.Should().Be("SELECT TOP 5 * FROM Users ORDER BY CreatedDate DESC");
     }
 
     [Fact]
@@ -341,7 +341,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM dbo.Users");
+        _ = result.Should().Be("SELECT TOP 10 * FROM dbo.Users");
     }
 
     [Fact]
@@ -351,7 +351,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM MyDB.dbo.Users");
+        _ = result.Should().Be("SELECT TOP 10 * FROM MyDB.dbo.Users");
     }
 
     [Fact]
@@ -361,7 +361,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM [MyDB].[dbo].[Users]");
+        _ = result.Should().Be("SELECT TOP 10 * FROM [MyDB].[dbo].[Users]");
     }
 
     [Fact]
@@ -371,7 +371,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users u");
+        _ = result.Should().Be("SELECT TOP 10 u.Name FROM Users u");
     }
 
     [Fact]
@@ -381,7 +381,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users WITH (NOLOCK)");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users WITH (NOLOCK)");
     }
 
     [Fact]
@@ -391,7 +391,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users");
+        _ = result.Should().Be("SELECT TOP 10 COUNT(*) FROM Users");
     }
 
     [Fact]
@@ -399,17 +399,19 @@ public class ConvertSelectStatementToSelectTop_Should
     {
         var sql = @"
             SELECT 
-    Name,
-          Email,
-       CreatedDate
+                Name,
+                Email,
+                CreatedDate
             FROM 
                 Users
             WHERE 
-    Active = 1";
+                Active = 1";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Contain("SELECT TOP 10 FROM");
+        _ = result.Should().Contain("SELECT TOP 10 Name,");
+        _ = result.Should().Contain("Email,");
+        _ = result.Should().Contain("CreatedDate FROM");
         _ = result.Should().Contain("Users");
         _ = result.Should().Contain("WHERE");
         _ = result.Should().Contain("Active = 1");
@@ -419,14 +421,14 @@ public class ConvertSelectStatementToSelectTop_Should
     public void ConvertToSelectTop_WhenSingleLineComments()
     {
         var sql = @"
-      -- Get all users
-         SELECT Name, Email 
-   FROM Users -- Main users table
-       WHERE Active = 1";
+            -- Get all users
+            SELECT Name, Email 
+            FROM Users -- Main users table
+            WHERE Active = 1";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Contain("SELECT TOP 10 FROM");
+        _ = result.Should().Contain("SELECT TOP 10 Name, Email FROM");
         _ = result.Should().Contain("Users");
         _ = result.Should().Contain("WHERE");
     }
@@ -436,15 +438,15 @@ public class ConvertSelectStatementToSelectTop_Should
     {
         var sql = @"
             /* This query gets all active users
-     Created: 2024-01-01
-   */
-       SELECT Name, Email 
+               Created: 2024-01-01
+            */
+            SELECT Name, Email 
             FROM Users 
-      WHERE Active = 1";
+            WHERE Active = 1";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Contain("SELECT TOP 10 FROM");
+        _ = result.Should().Contain("SELECT TOP 10 Name, Email FROM");
         _ = result.Should().Contain("Users");
     }
 
@@ -452,14 +454,14 @@ public class ConvertSelectStatementToSelectTop_Should
     public void ConvertToSelectTop_WhenCTE()
     {
         var sql = @"
-    WITH UserCTE AS (
-        SELECT * FROM AllUsers WHERE Status = 1
+            WITH UserCTE AS (
+                SELECT * FROM AllUsers WHERE Status = 1
             )
             SELECT Name, Email FROM Users";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Contain("SELECT TOP 10 FROM");
+        _ = result.Should().Contain("SELECT TOP 10 Name, Email FROM");
         _ = result.Should().Contain("Users");
     }
 
@@ -468,11 +470,11 @@ public class ConvertSelectStatementToSelectTop_Should
     {
         var sql = @"
             USE MyDatabase;
-  SELECT Name, Email FROM Users";
+            SELECT Name, Email FROM Users";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Contain("SELECT TOP 10 FROM");
+        _ = result.Should().Contain("SELECT TOP 10 Name, Email FROM");
         _ = result.Should().Contain("Users");
     }
 
@@ -483,7 +485,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users WHERE Id IN (SELECT UserId FROM Orders WHERE Status = 'Active')");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users WHERE Id IN (SELECT UserId FROM Orders WHERE Status = 'Active')");
     }
 
     [Fact]
@@ -493,7 +495,7 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Contain("SELECT TOP 10 from users where active = 1");
+        _ = result.Should().Contain("SELECT TOP 10 name, email from users where active = 1");
     }
 
     [Fact]
@@ -503,26 +505,26 @@ public class ConvertSelectStatementToSelectTop_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Contain("SELECT TOP 10 FrOm Users WhErE Active = 1");
+        _ = result.Should().Contain("SELECT TOP 10 Name FrOm Users WhErE Active = 1");
     }
 
     [Fact]
     public void ConvertToSelectTop_WhenComplexQueryWithAllClauses()
     {
         var sql = @"
-        SELECT DISTINCT u.Name, u.Email, COUNT(o.Id) AS OrderCount
-      FROM Users u
-      LEFT JOIN Orders o ON u.Id = o.UserId
+            SELECT DISTINCT u.Name, u.Email, COUNT(o.Id) AS OrderCount
+            FROM Users u
+            LEFT JOIN Orders o ON u.Id = o.UserId
             WHERE u.Active = 1 
-    AND u.CreatedDate > '2024-01-01'
-  AND o.Status IN ('Pending', 'Completed')
-  GROUP BY u.Name, u.Email
-        HAVING COUNT(o.Id) > 5
-ORDER BY u.Name ASC";
+              AND u.CreatedDate > '2024-01-01'
+              AND o.Status IN ('Pending', 'Completed')
+            GROUP BY u.Name, u.Email
+            HAVING COUNT(o.Id) > 5
+            ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Contain("SELECT TOP 10 FROM Users u");
+        _ = result.Should().Contain("SELECT DISTINCT TOP 10 u.Name, u.Email, COUNT(o.Id) AS OrderCount FROM Users u");
         _ = result.Should().Contain("LEFT JOIN Orders o ON u.Id = o.UserId");
         _ = result.Should().Contain("WHERE u.Active = 1");
         _ = result.Should().Contain("GROUP BY u.Name, u.Email");
@@ -534,16 +536,16 @@ ORDER BY u.Name ASC";
     public void ConvertToSelectTop_WhenPaginationQuery()
     {
         var sql = @"
-        SELECT * 
-      FROM Users 
-     WHERE Active = 1 
-      ORDER BY CreatedDate DESC 
-     OFFSET 0 ROWS 
-         FETCH NEXT 10 ROWS ONLY";
+            SELECT * 
+            FROM Users 
+            WHERE Active = 1 
+            ORDER BY CreatedDate DESC 
+            OFFSET 0 ROWS 
+            FETCH NEXT 10 ROWS ONLY";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 5);
 
-        _ = result.Should().Contain("SELECT TOP 5 FROM Users");
+        _ = result.Should().Contain("SELECT TOP 5 * FROM Users");
         _ = result.Should().Contain("WHERE Active = 1");
         _ = result.Should().Contain("ORDER BY CreatedDate DESC");
         _ = result.Should().Contain("OFFSET 0 ROWS");
@@ -557,7 +559,7 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM \"Users\"");
+        _ = result.Should().Be("SELECT TOP 10 \"Name\", \"Email\" FROM \"Users\"");
     }
 
     [Fact]
@@ -567,7 +569,7 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users WHERE Email = 'test@example.com' AND Name LIKE '%O''Brien%'");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users WHERE Email = 'test@example.com' AND Name LIKE '%O''Brien%'");
     }
 
     [Fact]
@@ -577,7 +579,7 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 5);
 
-        _ = result.Should().Be("SELECT TOP 5 FROM Products ORDER BY SalesTotal DESC");
+        _ = result.Should().Be("SELECT TOP 5 ProductName, SalesTotal FROM Products ORDER BY SalesTotal DESC");
     }
 
     [Fact]
@@ -587,7 +589,7 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 20);
 
-        _ = result.Should().Be("SELECT TOP 20 FROM Orders WHERE Status = 'Completed' ORDER BY OrderDate DESC");
+        _ = result.Should().Be("SELECT TOP 20 * FROM Orders WHERE Status = 'Completed' ORDER BY OrderDate DESC");
     }
 
     [Fact]
@@ -597,7 +599,7 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 1000);
 
-        _ = result.Should().Be("SELECT TOP 1000 FROM LargeTable WHERE Category = @category");
+        _ = result.Should().Be("SELECT TOP 1000 * FROM LargeTable WHERE Category = @category");
     }
 
     [Fact]
@@ -607,7 +609,7 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users");
+        _ = result.Should().Be("SELECT TOP 10 Name, Email FROM Users");
     }
 
     [Fact]
@@ -617,7 +619,7 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Contain("SELECT TOP 10 FROM Users WHERE Active = 1 UNION SELECT Name FROM ArchivedUsers");
+        _ = result.Should().Contain("SELECT TOP 10 Name FROM Users WHERE Active = 1 UNION SELECT Name FROM ArchivedUsers");
     }
 
     [Fact]
@@ -627,7 +629,7 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users u WHERE EXISTS (SELECT 1 FROM Orders o WHERE o.UserId = u.Id)");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users u WHERE EXISTS (SELECT 1 FROM Orders o WHERE o.UserId = u.Id)");
     }
 
     [Fact]
@@ -637,7 +639,7 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users WHERE Age BETWEEN 18 AND 65");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users WHERE Age BETWEEN 18 AND 65");
     }
 
     [Fact]
@@ -650,10 +652,10 @@ ORDER BY u.Name ASC";
         var result100 = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 100);
         var result1000 = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 1000);
 
-        _ = result1.Should().Contain("SELECT TOP 1 FROM");
-        _ = result5.Should().Contain("SELECT TOP 5 FROM");
-        _ = result100.Should().Contain("SELECT TOP 100 FROM");
-        _ = result1000.Should().Contain("SELECT TOP 1000 FROM");
+        _ = result1.Should().Contain("SELECT TOP 1 * FROM");
+        _ = result5.Should().Contain("SELECT TOP 5 * FROM");
+        _ = result100.Should().Contain("SELECT TOP 100 * FROM");
+        _ = result1000.Should().Contain("SELECT TOP 1000 * FROM");
     }
 
     [Fact]
@@ -663,7 +665,7 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users WITH (NOLOCK, READPAST)");
+        _ = result.Should().Be("SELECT TOP 10 * FROM Users WITH (NOLOCK, READPAST)");
     }
 
     [Fact]
@@ -673,6 +675,6 @@ ORDER BY u.Name ASC";
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectTop(sql, 10);
 
-        _ = result.Should().Be("SELECT TOP 10 FROM Users u CROSS JOIN Categories c");
+        _ = result.Should().Be("SELECT TOP 10 u.Name, c.CategoryName FROM Users u CROSS JOIN Categories c");
     }
 }

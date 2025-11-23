@@ -563,4 +563,142 @@ public class ExtractTopNumber_Should
 
         _ = result.Should().Be(10);
     }
+
+    [Fact]
+    public void ExtractTop_WhenTopWithParentheses()
+    {
+        var sql = "SELECT TOP(10) * FROM Users";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(10);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenTopWithParenthesesAndSpace()
+    {
+        var sql = "SELECT TOP (25) Name, Email FROM Users";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(25);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenTopWithParenthesesLargeNumber()
+    {
+        var sql = "SELECT TOP(1000) * FROM LargeTable WHERE Category = @category";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(1000);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenDistinctTopWithParentheses()
+    {
+        var sql = "SELECT DISTINCT TOP(50) Category FROM Products";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(50);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenDistinctTopWithParenthesesAndSpace()
+    {
+        var sql = "SELECT DISTINCT TOP (100) Category FROM Products WHERE Active = 1";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(100);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenTopWithParenthesesAndWhere()
+    {
+        var sql = "SELECT TOP(5) Name, Email FROM Users WHERE Active = 1";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(5);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenTopWithParenthesesAndOrderBy()
+    {
+        var sql = "SELECT TOP(20) * FROM Orders ORDER BY OrderDate DESC";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(20);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenTopWithParenthesesLowercase()
+    {
+        var sql = "select top(15) name from users";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(15);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenTopWithParenthesesMixedCase()
+    {
+        var sql = "SeLeCt ToP(30) Name FrOm Users";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(30);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenTopWithParenthesesAndJoin()
+    {
+        var sql = "SELECT TOP (10) u.Name, o.OrderDate FROM Users u INNER JOIN Orders o ON u.Id = o.UserId";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(10);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenTopWithParenthesesAndGroupBy()
+    {
+        var sql = "SELECT TOP(20) Category, COUNT(*) AS Total FROM Products GROUP BY Category";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(20);
+    }
+
+    [Fact]
+    public void ExtractTop_WhenTopWithParenthesesExtraSpaces()
+    {
+        var sql = "SELECT TOP (  50  ) * FROM Users";
+
+        var result = SqlInterrogator.ExtractTopNumber(sql);
+
+        _ = result.Should().Be(50);
+    }
+
+    [Fact]
+    public void ExtractTop_AllFormats_Comparison()
+    {
+        var sql1 = "SELECT TOP 10 * FROM Users";
+        var sql2 = "SELECT TOP(10) * FROM Users";
+        var sql3 = "SELECT TOP (10) * FROM Users";
+
+        var result1 = SqlInterrogator.ExtractTopNumber(sql1);
+        var result2 = SqlInterrogator.ExtractTopNumber(sql2);
+        var result3 = SqlInterrogator.ExtractTopNumber(sql3);
+
+        _ = result1.Should().Be(10);
+        _ = result2.Should().Be(10);
+        _ = result3.Should().Be(10);
+        _ = result1.Should().Be(result2);
+        _ = result2.Should().Be(result3);
+    }
 }

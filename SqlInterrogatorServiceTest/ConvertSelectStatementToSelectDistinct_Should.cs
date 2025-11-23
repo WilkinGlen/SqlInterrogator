@@ -584,7 +584,7 @@ public class ConvertSelectStatementToSelectDistinct_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
 
-        _ = result.Should().Be("SELECT DISTINCT Name, Email FROM Users");
+        _ = result.Should().Be("SELECT DISTINCT TOP 10 Name, Email FROM Users");
     }
 
     [Fact]
@@ -594,7 +594,7 @@ public class ConvertSelectStatementToSelectDistinct_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
 
-        _ = result.Should().Be("SELECT DISTINCT * FROM Users ORDER BY CreatedDate DESC");
+        _ = result.Should().Be("SELECT DISTINCT TOP 100 * FROM Users ORDER BY CreatedDate DESC");
     }
 
     [Fact]
@@ -604,8 +604,6 @@ public class ConvertSelectStatementToSelectDistinct_Should
 
         var result = SqlInterrogator.ConvertSelectStatementToSelectDistinct(sql);
 
-        // The regex only removes the first DISTINCT/TOP/ALL keyword, so "DISTINCT TOP 50" becomes "TOP 50"
-        // Then we add DISTINCT back, resulting in "DISTINCT TOP 50"
         _ = result.Should().Be("SELECT DISTINCT TOP 50 Category FROM Products");
     }
 
